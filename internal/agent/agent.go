@@ -1,14 +1,11 @@
 package agent
 
 import (
-	"errors"
 	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"log"
+	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
-	"logicflow-deploy/internal/utils"
-	"net/http"
 	"os"
 	"time"
 
@@ -55,8 +52,10 @@ func (a *DeploymentAgent) Run() {
 			// 处理注册消息
 			// ...
 			log.Printf("收到注册响应消息: %+v", msg)
+		case protocol.MsgWebDeploy:
+			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.WebProperties))
 		case protocol.MsgJavaDeploy:
-			go a.handleJavaTask(msg)
+			go nodes.NewJavaDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.JavaProperties))
 		case protocol.MsgHeartbeat:
 			log.Printf("收到心跳检测回应消息:%v\n", msg)
 		default:
@@ -81,174 +80,12 @@ func (a *DeploymentAgent) sendErrorResponse(taskID string, reason string) {
 	a.wsConn.WriteJSON(event)
 }
 
-// 错误处理闭包
-func (a *DeploymentAgent) handleStep(nodeId, stepName string, fn func() ([]byte, error)) bool {
-	status := schema.NewTaskStep(a.agentID, nodeId, stepName, schema.TaskStateSuccess, "", "")
-	out, err := fn()
-	if err != nil {
-		status.Status = schema.TaskStateFailed
-		status.Output = string(out)
-		status.Error = err.Error()
-		//a.sendStatus(*status)
-		return false
-	}
-	status.Output = string(out)
-	//a.sendStatus(*status)
-	return true
-}
 func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
 	if rollbackFn != nil {
 		for _, fn := range rollbackFn {
 			fn()
 		}
 	}
-}
-
-func (a *DeploymentAgent) handleJavaTask(msg protocol.Message) {
-	var task schema.JavaProperties
-	err := mapstructure.Decode(msg.Payload, &task)
-	if err != nil {
-		log.Printf("解析任务数据失败: %v", err)
-		MsgTaskResult := protocol.Message{
-			Type:            protocol.MsgTaskResult,
-			FlowExecutionID: msg.FlowExecutionID,
-			AgentID:         a.agentID,
-			NodeID:          msg.NodeID,
-			Timestamp:       time.Now().UnixNano(),
-			Payload:         schema.NodeStateSuccess,
-		}
-		var rollbackFn = new([]func())
-		defer func() {
-			// 执行回滚操作
-			fmt.Println("在defer里...")
-			MsgTaskResult.Timestamp = time.Now().UnixNano()
-			if len(*rollbackFn) != 0 {
-				for _, fn := range *rollbackFn {
-					fmt.Println("执行回滚...")
-					fn()
-					MsgTaskResult.Payload = schema.NodeStateRollbacked
-				}
-			}
-			a.sendLastResult(MsgTaskResult)
-		}()
-		// 执行部署步骤
-		status := schema.NewTaskStep("开始部署", msg.AgentID, msg.NodeID, schema.TaskStateRunning, "", "")
-		a.sendStatus(*status)
-
-		*rollbackFn = append(*rollbackFn, func() {
-			a.StartService(task.ServerName)
-		})
-		// 1. 停止服务
-		if !a.handleStep("停止服务", msg.NodeID, func() ([]byte, error) {
-			return a.StopService(task.ServerName)
-		}) {
-			MsgTaskResult.Payload = schema.NodeStateFailed
-			a.sendLastResult(MsgTaskResult)
-			return
-		}
-
-		// 2. 备份旧版本
-		if !a.handleStep("备份旧版本", msg.NodeID, func() ([]byte, error) {
-			return a.BakOld(task.DeployPath, task.BakPath)
-		}) {
-			MsgTaskResult.Payload = schema.NodeStateFailed
-			a.sendLastResult(MsgTaskResult)
-			return
-		}
-
-		// 恢复原始状态
-		newRollbackFn := func() { a.Rollback(task.BakPath, task.DeployPath, task.ServerName) }
-		*rollbackFn = append([]func(){newRollbackFn}, *rollbackFn...)
-		// 3. 下载文件
-		if !a.handleStep("下载最新代码包", msg.NodeID, func() ([]byte, error) {
-			return a.UpdateFile(task.PackageSource, task.DeployPath)
-		}) {
-			MsgTaskResult.Payload = schema.NodeStateFailed
-			a.sendLastResult(MsgTaskResult)
-			return
-		}
-
-		// 4. 启动服务
-		if !a.handleStep("启动服务", msg.NodeID, func() ([]byte, error) {
-			return a.StartService(task.ServerName)
-		}) {
-			MsgTaskResult.Payload = schema.NodeStateFailed
-			a.sendLastResult(MsgTaskResult)
-			return
-		}
-
-		// 5. 健康检查
-		if !a.handleStep("健康检查", msg.NodeID, func() ([]byte, error) {
-			return a.checkHealth(msg.NodeID, task.Port, task.HealthUri, time.Duration(task.HealthCheckTimeout)*time.Second)
-		}) {
-			MsgTaskResult.Payload = schema.NodeStateFailed
-			a.sendLastResult(MsgTaskResult)
-			return
-		}
-
-		// 6. 清理旧版本
-	}
-}
-func (a *DeploymentAgent) StopService(service string) ([]byte, error) {
-	return utils.RunShell("systemctl stop " + service)
-}
-
-// 正确写法应该像其他方法一样有空格：
-func (a *DeploymentAgent) StartService(service string) ([]byte, error) {
-	return utils.RunShell("systemctl start " + service)
-}
-
-func (a *DeploymentAgent) BakOld(old, new string) ([]byte, error) {
-
-	return utils.RunShell("cp -r " + old + " " + new)
-}
-
-func (a *DeploymentAgent) UpdateFile(downloadURL, new string) ([]byte, error) {
-	return utils.RunShell("curl -o " + new + " " + downloadURL)
-}
-
-func (a *DeploymentAgent) Rollback(backup, new, service string) ([]byte, error) {
-	return utils.RunShell("cp -r " + backup + " " + new)
-}
-
-func (a *DeploymentAgent) checkHealth(nodeId string, port int, uri string, timeout time.Duration) ([]byte, error) {
-	status := schema.NewTaskStep(a.agentID, nodeId, "健康检查", schema.TaskStateSuccess, "", "")
-	defer a.sendStatus(*status)
-	client := http.Client{Timeout: 3 * time.Second}
-	endTime := time.Now().Add(timeout)
-
-	for time.Now().Before(endTime) {
-		resp, err := client.Get(fmt.Sprintf("http://localhost:%d%s", port, uri))
-		if err == nil && resp.StatusCode == 200 {
-			status.Status = schema.TaskStateSuccess
-			return nil, nil
-		}
-		time.Sleep(5 * time.Second)
-	}
-	status.Status = schema.TaskStateFailed
-	status.Error = "健康检查超时"
-	return nil, errors.New("健康检查超时")
-}
-
-func (a *DeploymentAgent) sendStatus(status schema.TaskStep) {
-	event := protocol.Message{
-		Type:            protocol.MsgTaskStep,
-		FlowExecutionID: status.FlowExecutionID,
-		AgentID:         a.agentID,
-		Timestamp:       time.Now().UnixNano(),
-		Payload:         status,
-	}
-	a.wsConn.WriteJSON(event)
-}
-
-func (a *DeploymentAgent) sendLastResult(data protocol.Message) {
-	data.Timestamp = time.Now().UnixNano()
-	a.wsConn.WriteJSON(data)
-}
-func (a *DeploymentAgent) sendLastErrorResult(data protocol.Message) {
-	data.Timestamp = time.Now().UnixNano()
-	data.Payload =
-		a.wsConn.WriteJSON(data)
 }
 
 // 每10s发一次心跳检测

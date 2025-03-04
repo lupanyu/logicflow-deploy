@@ -1,14 +1,17 @@
 package controller
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"logicflow-deploy/internal/services"
+)
 
 type DeployController struct {
-	deployService *service.DeployService
+	deployService *services.DeployService
 }
 
 func NewDeployController() *DeployController {
 	return &DeployController{
-		deployService: service.NewDeployService(),
+		deployService: services.NewDeployService(),
 	}
 }
 

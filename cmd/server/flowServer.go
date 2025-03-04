@@ -32,5 +32,5 @@ func main() {
 	r := gin.Default()
 	routes.RegisterAPIRoutes(r, s)
 	s.SetHttp(r)
-	s.Start("127.0.0.1", 8080)
+	s.Start("0.0.0.0", 8080)
 }

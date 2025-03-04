@@ -34,7 +34,7 @@ func (s *Server) SetHttp(g *gin.Engine) {
 	s.httpServer = g
 }
 func (s *Server) Start(ip string, port int) {
-	s.httpServer.Run(fmt.Sprintf("http://%s:%d", ip, port))
+	_ = s.httpServer.Run(fmt.Sprintf("%s:%d", ip, port))
 }
 
 // 查看agent的状态 是否可以接受任务
@@ -111,7 +111,9 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Printf("关闭连接失败: %v", err)
+			log.Printf("关闭%s连接失败: %v", agentID, err)
+		} else {
+			log.Printf("关闭%s连接成功: %v", agentID, err)
 		}
 	}()
 	log.Println("等待消息...")
@@ -119,11 +121,10 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 		var msg protocol.Message
 		if err := conn.ReadJSON(&msg); err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				log.Println("读取超时")
+				log.Printf("读取%s消息超时:%v", agentID, err)
 			} else {
-				log.Printf("读取消息失败: %v", err)
+				log.Printf("读取%s消息失败: %v", agentID, err)
 			}
-			log.Printf("读取消息失败: %v", err)
 			// 把agent从map中移除
 			s.agentsLock.Lock()
 			delete(s.agents, agentID)
