@@ -148,4 +148,9 @@ func (a *DeploymentAgent) reconnect() {
 	if err := a.Connect(); err != nil {
 		log.Printf(" [%s]重连失败: %v", utils.GetCallerInfo(1), err)
 	}
+	// 心跳上报
+	go a.Heartbeat()
+
+	// 启动主循环
+	a.Run()
 }

@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"logicflow-deploy/internal/controller"
 	"logicflow-deploy/internal/server"
-	"logicflow-deploy/internal/services"
 )
 
 func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
@@ -19,5 +18,5 @@ func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
 		deployGroup.DELETE("/:id", deployCtrl.CancelDeploy) // 取消当前部署
 	}
 
-	r.GET("/ws", func(c *gin.Context) { services.HandleFlowExecution(s, c) })
+	// r.GET("/ws", func(c *gin.Context) { services.HandleFlowExecution(s, c) })
 }
