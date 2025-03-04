@@ -33,8 +33,8 @@ func NewServer() *Server {
 func (s *Server) SetHttp(g *gin.Engine) {
 	s.httpServer = g
 }
-func (s *Server) Start(port int) {
-	s.httpServer.Run(fmt.Sprintf(":%d", port))
+func (s *Server) Start(ip string, port int) {
+	s.httpServer.Run(fmt.Sprintf("http://%s:%d", ip, port))
 }
 
 // 查看agent的状态 是否可以接受任务
