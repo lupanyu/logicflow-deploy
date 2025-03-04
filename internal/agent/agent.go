@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"log"
 	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
@@ -118,11 +117,11 @@ func (a *DeploymentAgent) Heartbeat() {
 }
 
 // 在现有结构体下方添加
-func (a *DeploymentAgent) Connect() error {
+func (a *DeploymentAgent) Connect() {
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.Dial(a.serverURL, nil)
 	if err != nil {
-		return fmt.Errorf("连接服务器失败: %w", err)
+		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(0), err)
 	}
 	a.wsConn = conn
 	// 发送注册消息
@@ -134,23 +133,20 @@ func (a *DeploymentAgent) Connect() error {
 	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(1), registerMsg)
 	if err := conn.WriteJSON(registerMsg); err != nil {
 		conn.Close()
-		return fmt.Errorf("注册消息发送失败: %w", err)
+		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(0), err)
 	}
 
 	log.Printf(" [%s]已连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(1), a.serverURL, a.agentID)
-	return nil
+	// 心跳上报
+	go a.Heartbeat()
+
+	// 启动主循环
+	a.Run()
 }
 
 // 在结构体中添加重连逻辑
 func (a *DeploymentAgent) reconnect() {
 	// ... 原有重连代码基础上添加日志 ...
 	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo(1))
-	if err := a.Connect(); err != nil {
-		log.Printf(" [%s]重连失败: %v", utils.GetCallerInfo(1), err)
-	}
-	// 心跳上报
-	go a.Heartbeat()
-
-	// 启动主循环
-	a.Run()
+	a.Connect()
 }

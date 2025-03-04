@@ -23,9 +23,5 @@ func main() {
 	if err := da.Connect(); err != nil {
 		log.Fatalf("连接服务器失败: %v", err)
 	}
-	// 心跳上报
-	go da.Heartbeat()
 
-	// 启动主循环
-	da.Run()
 }
