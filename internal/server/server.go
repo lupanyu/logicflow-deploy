@@ -60,7 +60,7 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 	// 处理注册消息
 	var registerMsg protocol.Message
 	if err := conn.ReadJSON(&registerMsg); err != nil {
-		log.Printf("读取注册消息失败: %v", err)
+		log.Printf(" [%s]读取注册消息失败: %v", err)
 		return
 	}
 	var agentID string
@@ -73,7 +73,7 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 			Payload: protocol.MessageAuthResponse{Code: 401,
 				Message: "Invalid message type"},
 		})
-		log.Printf("收到无效消息: %+v", registerMsg)
+		log.Printf(" [%s]收到无效消息: %+v", registerMsg)
 		return
 	} else {
 		if registerMsg.AgentID == "" {
@@ -84,9 +84,9 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 				Payload: protocol.MessageAuthResponse{Code: 401,
 					Message: "Invalid agent id"},
 			})
-			log.Printf("收到无效消息: %+v", registerMsg)
+			log.Printf(" [%s]收到无效消息: %+v", registerMsg)
 			if err := conn.Close(); err != nil {
-				log.Printf("关闭连接失败: %v", err)
+				log.Printf(" [%s]关闭连接失败: %v", err)
 			}
 			return
 		}
@@ -102,18 +102,20 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 
 	//把agent加入到server的map中
 	s.agentsLock.Lock()
-	s.agents[agentID] = &protocol.AgentConnection{
+	agent := &protocol.AgentConnection{
 		Conn:       conn,
 		LastActive: time.Now(),
 		Status:     protocol.AgentReady,
 	}
+	s.agents[agentID] = agent
+	log.Println("新添加的agent", agentID, agent, s.agents)
 	s.agentsLock.Unlock()
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Printf("关闭%s连接失败: %v", agentID, err)
+			log.Printf(" [%s]关闭%s连接失败: %v", agentID, err)
 		} else {
-			log.Printf("关闭%s连接成功: %v", agentID, err)
+			log.Printf(" [%s]关闭%s连接成功: %v", agentID, err)
 		}
 	}()
 	log.Println("等待消息...")
@@ -121,9 +123,9 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 		var msg protocol.Message
 		if err := conn.ReadJSON(&msg); err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				log.Printf("读取%s消息超时:%v", agentID, err)
+				log.Printf(" [%s]读取%s消息超时:%v", agentID, err)
 			} else {
-				log.Printf("读取%s消息失败: %v", agentID, err)
+				log.Printf(" [%s]读取%s消息失败: %v", agentID, err)
 			}
 			// 把agent从map中移除
 			s.agentsLock.Lock()
@@ -131,34 +133,41 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 			s.agentsLock.Unlock()
 			break
 		}
-		log.Println("收到的消息是:", msg)
 		switch msg.Type {
-
 		case protocol.MsgStatus: // 处理最终的任务状态
 			handleStatusUpdate(s, msg)
 		case protocol.MsgTaskStep: // 子任务的状态
 			handleStatusUpdate(s, msg)
 		case protocol.MsgHeartbeat:
-			handleHealthCheck(s, msg) // 处理心跳消息
+			handleHealthCheck(s, msg, conn) // 处理心跳消息
 		default:
-			log.Println("unhandled default case")
+			log.Println("unhandled default case", msg)
 		}
 		// 收到有效消息后重置超时计时器
 		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
 	}
 }
 
-func handleHealthCheck(s *Server, msg protocol.Message) {
+func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 	// 处理心跳消息
 	agentID := msg.AgentID
 	agent, ok := s.agents[agentID]
 	log.Println("收到心跳消息:", msg)
 	if !ok {
-		log.Printf("未找到AgentID: %s", agentID)
+		log.Printf(" [%s]未找到AgentID: %s", agentID)
 		return
 	}
 	agent.LastActive = time.Now()
-	agent.Status = protocol.AgentReady
+
+	// 回复心跳响应
+	response := protocol.Message{
+		Type:      protocol.MsgHeartbeat,
+		AgentID:   agentID,
+		Timestamp: time.Now().UnixNano(),
+		Payload:   "pong",
+	}
+	conn.WriteJSON(response)
+
 }
 
 // 处理agent的任务状态更新
@@ -169,13 +178,13 @@ func handleStatusUpdate(s *Server, msg protocol.Message) {
 	var statusMsg schema.TaskStatus
 	err := mapstructure.Decode(msg.Payload, &statusMsg)
 	if err != nil {
-		log.Printf("反序列化状态消息失败: %v", err)
+		log.Printf(" [%s]反序列化状态消息失败: %v", err)
 		return
 	}
 	// 更新Agent状态和最后活跃时间
 	connection, ok := s.agents[agentID]
 	if !ok {
-		log.Printf("未找到AgentID: %s", agentID)
+		log.Printf(" [%s]未找到AgentID: %s", agentID)
 		return
 	}
 	connection.LastActive = time.Now()
@@ -191,8 +200,10 @@ type FlowProcessor struct {
 	nodeStatusChan chan protocol.Message // 把每个节点的状态发送到这里 payload是NodeState
 }
 
+//
+
 // 初始化处理器
-func NewFlowProcessor(flow schema.FlowData, server *Server) (*FlowProcessor, error) {
+func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 	fp := &FlowProcessor{
 		FlowID:       generateFlowID(),
 		flowData:     flow,
@@ -208,15 +219,17 @@ func NewFlowProcessor(flow schema.FlowData, server *Server) (*FlowProcessor, err
 		case "java":
 			var data schema.JavaProperties
 			// 从node.Properties中获取属性
-			err := node.DeserializationProperties(data)
+			err := node.DeserializationProperties(&data)
 			if err != nil {
 				return nil, err
 			}
-			host, ok := server.GetAgentConnection(data.Host)
+			log.Println("反序列化properties", data)
+
+			host, ok := s.GetAgentConnection(data.Host)
 			if !ok {
-				return nil, fmt.Errorf("未找到AgentID: %s", data.Host)
+				return nil, fmt.Errorf("java节点%v未找到AgentID: %s", data, data.Host)
 			}
-			if !server.HandleAgentStatus(data.Host) {
+			if !s.HandleAgentStatus(data.Host) {
 				return nil, fmt.Errorf("AgentID: %s 状态异常", data.Host)
 			}
 			fp.RegisterExecutor(node.ID, nodes.NewJavaNodeExecutor(data, host))
@@ -226,17 +239,22 @@ func NewFlowProcessor(flow schema.FlowData, server *Server) (*FlowProcessor, err
 			// 反序列化properties
 			var data schema.WebProperties
 			// 从node.Properties中获取属性
-			err := node.DeserializationProperties(data)
+
+			err := node.DeserializationProperties(&data)
 			if err != nil {
 				return nil, err
 			}
-			host, ok := server.GetAgentConnection(data.Host)
+			log.Println("反序列化properties", data)
+
+			host, ok := s.GetAgentConnection(data.Host)
 			if !ok {
-				return nil, fmt.Errorf("未找到AgentID: %s", data.Host)
+				return nil, fmt.Errorf("web节点%v未找到AgentID: %s", data, data.Host)
 			}
 			fp.RegisterExecutor(node.ID, nodes.NewWebNodeExecuter(data, host))
+		case "end":
+			fp.RegisterExecutor(node.ID, nodes.NewEndNodeExecutor(node))
 		default:
-			log.Printf("未注册的节点类型: %s", node.Type)
+			log.Printf(" [%s]未注册的节点类型: %s", utils.GetCallerInfo(1), node.Type)
 			return nil, fmt.Errorf("未注册的节点类型: %s", node.Type)
 		}
 	}
@@ -285,7 +303,7 @@ func (fp *FlowProcessor) pushStatusUpdates() {
 			var nodeStatus schema.NodeStatus
 			err := mapstructure.Decode(state.Payload, &nodeStatus)
 			if err != nil {
-				log.Printf("反序列化状态消息失败: %v", err)
+				log.Printf(" [%s]反序列化状态消息失败: %v", err)
 				return
 			}
 			// 更新node节点的状态
@@ -320,49 +338,69 @@ func (fp *FlowProcessor) ExecuteFlow(ctx context.Context, server *Server) schema
 	currentNode := []schema.Node{startNode}
 
 	// 执行节点
-	for _, node := range currentNode {
+	go func() {
+		// ... 原有上下文代码 ...
 
-		// 更新agent状态为处理中
-		server.agents[node.ID].Status = protocol.TaskInProgress
+		for _, node := range currentNode {
 
-		// 执行节点
-		state := fp.executeNode(ctx, node, server)
-		execution.NodeResults[node.ID] = state
+			log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(0), node.ID)
+			state := fp.executeNode(ctx, node, server)
+			execution.NodeResults[node.ID] = state
 
-		// 更新agent状态
-		if state.Status == "success" {
-			server.agents[node.ID].Status = protocol.AgentReady
-		} else {
-			server.agents[node.ID].Status = protocol.TaskCompleted
-			break
+			// 使用状态常量代替魔法值
+			if state.Status == schema.NodeStateSuccess {
+				if agent, exists := server.agents[node.ID]; exists {
+					agent.Status = protocol.AgentReady
+				}
+			} else {
+				if agent, exists := server.agents[node.ID]; exists {
+					agent.Status = protocol.TaskCompleted
+				}
+				// 添加错误日志记录
+				log.Printf("节点 %s 执行失败，状态: %s", node.ID, state.Status)
+				break
+			}
+
+			// 使用通道模式处理下游节点
+			nextNodes := NextNodes(fp.flowData, node)
+			if len(nextNodes) == 0 {
+				break
+			}
+
+			// 使用goroutine池处理并行节点
+			var wg sync.WaitGroup
+			for _, nextNode := range nextNodes {
+				wg.Add(1)
+				go func(n schema.Node) {
+					defer wg.Done()
+					// 创建节点执行的副本
+					nodeCopy := n
+					state := fp.executeNode(ctx, nodeCopy, server)
+					execution.NodeResults[nodeCopy.ID] = state
+				}(nextNode)
+			}
+			wg.Wait()
 		}
 
-		// 获取下一个节点
-		nextNode := NextNodes(fp.flowData, node)
-		if nextNode == nil {
-			break
-		}
-		currentNode = nextNode
-
-	}
-	execution.EndTime = utils.GetNowTime()
+		// ... 后续代码 ...
+	}()
+	//execution.EndTime = utils.GetNowTime()
 	fp.stateStorage.Save(execution)
 	return execution
 }
 
 // 执行单个节点
 func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, server *Server) schema.NodeState {
-	// 等待agent准备就绪
 	for {
-		agent, exists := server.agents[node.ID]
-		if !exists || agent.Status != protocol.AgentReady {
-			time.Sleep(1 * time.Second)
-			continue
-		}
+		// 等待agent准备就绪 TODO
+
+		// 查看存储中是否有当前节点的执行日志
 		flowExecution, ok := fp.stateStorage.Get(node.ID)
 		if !ok {
-			log.Printf("未注册的节点: %s", node.ID)
-			return schema.NodeState{Status: "failed", Error: fmt.Sprintf("未注册的节点: %s", node.ID)}
+			flowExecution = schema.FlowExecution{
+				FlowID:      fp.FlowID,
+				NodeResults: make(map[string]schema.NodeState),
+			}
 		}
 		if CheckDependency(fp.flowData, node, flowExecution) {
 			break

@@ -12,8 +12,11 @@ func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
 	deployGroup := r.Group("/api/v1/deploy")
 	{
 		deployCtrl := controller.NewDeployController()
-		deployGroup.POST("", deployCtrl.StartDeploy)        // 开始部署
+		deployGroup.POST("", func(context *gin.Context) {
+			deployCtrl.StartDeploy(context, s)
+		}) // 开始部署
 		deployGroup.GET("/:id", deployCtrl.GetDeployStatus) // 获取部署状态
+		deployGroup.DELETE("/:id", deployCtrl.CancelDeploy) // 取消当前部署
 	}
 
 	r.GET("/ws", func(c *gin.Context) { services.HandleFlowExecution(s, c) })

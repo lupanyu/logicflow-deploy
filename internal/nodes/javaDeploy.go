@@ -92,7 +92,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 //	var task schema.JavaProperties
 //	err := mapstructure.Decode(msg.Payload, &task)
 //	if err != nil {
-//		log.Printf("解析任务数据失败: %v", err)
+//		log.Printf(" [%s]解析任务数据失败: %v", err)
 //		MsgTaskResult := protocol.Message{
 //			Type:            protocol.MsgTaskResult,
 //			FlowExecutionID: msg.FlowExecutionID,

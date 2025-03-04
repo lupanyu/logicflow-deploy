@@ -6,6 +6,7 @@ import (
 	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
+	"logicflow-deploy/internal/utils"
 	"os"
 	"time"
 
@@ -35,31 +36,32 @@ func (a *DeploymentAgent) Run() {
 		if err := a.wsConn.ReadJSON(&msg); err != nil {
 			// 处理连接错误类型
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				log.Printf("连接正常关闭")
+				log.Printf(" [%s]连接正常关闭", utils.GetCallerInfo(1))
 				return
 			}
-			log.Printf("连接异常: %v", err)
-			//a.reconnect()
+			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(1), err)
+			time.Sleep(5 * time.Second)
+			a.reconnect()
 			continue
 		}
 		// 验证消息格式
 		if msg.Payload == nil {
-			log.Printf("收到无效消息: %+v", msg)
+			log.Printf(" [%s]收到无效消息: %+v", utils.GetCallerInfo(1), msg)
 			continue
 		}
 		switch msg.Type {
 		case protocol.MsgRegisterResponse:
 			// 处理注册消息
 			// ...
-			log.Printf("收到注册响应消息: %+v", msg)
+			log.Printf(" [%s]收到注册响应消息: %+v", utils.GetCallerInfo(1), msg)
 		case protocol.MsgWebDeploy:
 			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.WebProperties))
 		case protocol.MsgJavaDeploy:
 			go nodes.NewJavaDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.JavaProperties))
 		case protocol.MsgHeartbeat:
-			log.Printf("收到心跳检测回应消息:%v\n", msg)
+			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(1), msg)
 		default:
-			log.Printf("未知消息类型: %s", msg.Type)
+			log.Printf(" [%s]未知消息类型: %s", utils.GetCallerInfo(1), msg.Type)
 			a.sendErrorResponse(msg.FlowExecutionID, "unsupported message type")
 		}
 	}
@@ -104,10 +106,10 @@ func (a *DeploymentAgent) Heartbeat() {
 				Payload:   []byte("ping"),
 			}
 			if err := a.wsConn.WriteJSON(heartbeat); err != nil {
-				log.Printf("心跳发送失败: %v", err)
+				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(1), err)
 				return
 			} else {
-				log.Printf("心跳发送成功: %v", heartbeat)
+				log.Printf(" [%s]心跳发送成功: %v", utils.GetCallerInfo(1), heartbeat)
 			}
 		case <-a.stopHeartbeat:
 			return
@@ -129,21 +131,21 @@ func (a *DeploymentAgent) Connect() error {
 		AgentID:   a.agentID,
 		Timestamp: time.Now().UnixNano(),
 	}
-	log.Printf("发送注册消息: %+v", registerMsg)
+	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(1), registerMsg)
 	if err := conn.WriteJSON(registerMsg); err != nil {
 		conn.Close()
 		return fmt.Errorf("注册消息发送失败: %w", err)
 	}
 
-	log.Printf("已连接服务器 %s [AgentID: %s]", a.serverURL, a.agentID)
+	log.Printf(" [%s]已连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(1), a.serverURL, a.agentID)
 	return nil
 }
 
 // 在结构体中添加重连逻辑
 func (a *DeploymentAgent) reconnect() {
 	// ... 原有重连代码基础上添加日志 ...
-	log.Printf("尝试重新连接服务器...")
+	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo(1))
 	if err := a.Connect(); err != nil {
-		log.Printf("重连失败: %v", err)
+		log.Printf(" [%s]重连失败: %v", utils.GetCallerInfo(1), err)
 	}
 }
