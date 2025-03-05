@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"context"
 	"encoding/json"
 	"logicflow-deploy/internal/schema"
 	"os"
@@ -20,7 +19,8 @@ type BuildNodeExecutor struct {
 	out     *os.File
 }
 
-func (b *BuildNodeExecutor) Execute(ctx context.Context, state chan schema.TaskStep) {
+func (b *BuildNodeExecutor) Execute() schema.TaskStep {
+	return schema.TaskStep{}
 }
 func (b *BuildNodeExecutor) NodeType() string {
 	return "build"

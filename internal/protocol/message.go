@@ -8,7 +8,6 @@ const (
 	MsgJavaDeploy                   // 部署java应用  server->agent
 	MsgWebDeploy                    // 部署web应用   server->agent
 	MsgTask                         // 部署任务控制  server->agent
-	MsgStatus                       // 部署任务最终状态  agent->server 异常或者最终状态
 	MsgHeartbeat                    // 心跳检测   	 server->agent  ,agent->server
 	MsgTaskStep                     // 任务详细步骤以及日志信息  agent->server
 	MsgTaskResult                   // 任务结果		agent->server

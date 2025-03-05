@@ -1,14 +1,16 @@
 package nodes
 
 import (
-	"context"
 	"encoding/json"
 	"logicflow-deploy/internal/schema"
 )
 
 type EndNodeExecutor struct{}
 
-func (e *EndNodeExecutor) Execute(ctx context.Context, state chan schema.TaskStep) {
+func (e *EndNodeExecutor) Execute() schema.TaskStep {
+	return schema.TaskStep{
+		Status: schema.TaskStateSuccess,
+	}
 }
 
 func (e *EndNodeExecutor) NodeType() string {
