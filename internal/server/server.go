@@ -190,7 +190,7 @@ func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 		Timestamp: time.Now().UnixNano(),
 		Payload:   "pong",
 	}
-	conn.WriteJSON(response)
+	_ = conn.WriteJSON(response)
 
 }
 
