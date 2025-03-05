@@ -20,8 +20,6 @@ func main() {
 	da := agent.NewDeploymentAgent(serverURL)
 
 	// 建立 WebSocket 连接
-	if err := da.Connect(); err != nil {
-		log.Fatalf("连接服务器失败: %v", err)
-	}
+	da.Connect()
 
 }

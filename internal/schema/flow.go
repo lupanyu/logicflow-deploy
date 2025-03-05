@@ -68,6 +68,7 @@ type FlowExecution struct {
 	EndTime      *time.Time           `json:"endTime"`     // 改为指针类型，可空
 	Duration     float64              `json:"duration"`    // 新增执行耗时（秒）
 	NodeResults  map[string]NodeState `json:"nodeResults"` // key 是 node 的 id，value 是 node 的执行结果
+	FlowData     FlowData             `json:"flowData"`    // 原始数据
 }
 
 // 持续时间计算方法

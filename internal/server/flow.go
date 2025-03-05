@@ -40,11 +40,11 @@ func LoadFlowModel(filename string) (schema.FlowData, error) {
 }
 
 // 找到当前节点起，下一批能执行的节点
-func NextNodes(flowData schema.FlowData, currentNode schema.Node) []schema.Node {
+func NextNodes(flowData schema.FlowData, currentNodeId string) []schema.Node {
 	result := []schema.Node{}
 	// 遍历所有边，找到当前节点的下一个节点
 	for _, edges := range flowData.Edges {
-		if edges.SourceNodeId == currentNode.ID {
+		if edges.SourceNodeId == currentNodeId {
 			result = append(result, getNodeById(flowData, edges.TargetNodeId))
 		}
 	}

@@ -17,11 +17,10 @@ func (e *StartNodeExecutor) Execute(ctx context.Context, state chan schema.TaskS
 		Output:  schema.NewOutLog(schema.LevelInfo, "开始应用部署"),
 	}
 	state <- stat
-	state <- stat
 	time.Sleep(time.Millisecond)
 	stat.Status = schema.TaskStateSuccess
 	stat.Output = schema.NewOutLog(schema.LevelInfo, "应用部署成功")
-	//state <- stat
+	state <- stat
 }
 
 func (e *StartNodeExecutor) NodeType() string {

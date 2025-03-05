@@ -28,6 +28,7 @@ func HandleFlowSave(c *gin.Context) {
 }
 
 func main() {
+
 	s := server.NewServer()
 	r := gin.Default()
 	routes.RegisterAPIRoutes(r, s)

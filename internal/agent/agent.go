@@ -35,32 +35,32 @@ func (a *DeploymentAgent) Run() {
 		if err := a.wsConn.ReadJSON(&msg); err != nil {
 			// 处理连接错误类型
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				log.Printf(" [%s]连接正常关闭", utils.GetCallerInfo(1))
+				log.Printf(" [%s]连接正常关闭", utils.GetCallerInfo())
 				return
 			}
-			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(1), err)
+			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
 			time.Sleep(5 * time.Second)
 			a.reconnect()
 			continue
 		}
 		// 验证消息格式
 		if msg.Payload == nil {
-			log.Printf(" [%s]收到无效消息: %+v", utils.GetCallerInfo(1), msg)
+			log.Printf(" [%s]收到无效消息: %+v", utils.GetCallerInfo(), msg)
 			continue
 		}
 		switch msg.Type {
 		case protocol.MsgRegisterResponse:
 			// 处理注册消息
 			// ...
-			log.Printf(" [%s]收到注册响应消息: %+v", utils.GetCallerInfo(1), msg)
+			log.Printf(" [%s]收到注册响应消息: %+v", utils.GetCallerInfo(), msg)
 		case protocol.MsgWebDeploy:
 			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.WebProperties))
 		case protocol.MsgJavaDeploy:
 			go nodes.NewJavaDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.JavaProperties))
 		case protocol.MsgHeartbeat:
-			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(1), msg)
+			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
 		default:
-			log.Printf(" [%s]未知消息类型: %s", utils.GetCallerInfo(1), msg.Type)
+			log.Printf(" [%s]未知消息类型: %s", utils.GetCallerInfo(), msg.Type)
 			a.sendErrorResponse(msg.FlowExecutionID, "unsupported message type")
 		}
 	}
@@ -94,6 +94,7 @@ func (a *DeploymentAgent) Heartbeat() {
 	ticker := time.NewTicker(10 * time.Second)
 	log.Println("心跳检测启动...")
 	// 在退出时停止心跳
+
 	defer ticker.Stop()
 	for {
 		select {
@@ -102,13 +103,13 @@ func (a *DeploymentAgent) Heartbeat() {
 				Type:      protocol.MsgHeartbeat,
 				AgentID:   a.agentID,
 				Timestamp: time.Now().UnixNano(),
-				Payload:   []byte("ping"),
+				Payload:   "ping",
 			}
 			if err := a.wsConn.WriteJSON(heartbeat); err != nil {
-				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(1), err)
+				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(), err)
 				return
 			} else {
-				log.Printf(" [%s]心跳发送成功: %v", utils.GetCallerInfo(1), heartbeat)
+				log.Printf(" [%s]心跳发送成功: %v", utils.GetCallerInfo(), heartbeat)
 			}
 		case <-a.stopHeartbeat:
 			return
@@ -121,7 +122,7 @@ func (a *DeploymentAgent) Connect() {
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.Dial(a.serverURL, nil)
 	if err != nil {
-		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(0), err)
+		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(), err)
 	}
 	a.wsConn = conn
 	// 发送注册消息
@@ -130,13 +131,13 @@ func (a *DeploymentAgent) Connect() {
 		AgentID:   a.agentID,
 		Timestamp: time.Now().UnixNano(),
 	}
-	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(1), registerMsg)
+	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(), registerMsg)
 	if err := conn.WriteJSON(registerMsg); err != nil {
 		conn.Close()
-		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(0), err)
+		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(), err)
 	}
 
-	log.Printf(" [%s]已连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(1), a.serverURL, a.agentID)
+	log.Printf(" [%s]已连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(), a.serverURL, a.agentID)
 	// 心跳上报
 	go a.Heartbeat()
 
@@ -147,6 +148,6 @@ func (a *DeploymentAgent) Connect() {
 // 在结构体中添加重连逻辑
 func (a *DeploymentAgent) reconnect() {
 	// ... 原有重连代码基础上添加日志 ...
-	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo(1))
+	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo())
 	a.Connect()
 }

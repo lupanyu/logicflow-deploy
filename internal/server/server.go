@@ -19,10 +19,11 @@ import (
 )
 
 type Server struct {
-	agents map[string]*protocol.AgentConnection // 连接的Agent
-	//taskQueue  chan DeploymentTask
-	httpServer *gin.Engine
-	agentsLock sync.RWMutex
+	agents       map[string]*protocol.AgentConnection // 连接的Agent
+	stateStorage Storage
+	fpMap        map[string]*FlowProcessor // 当前在执行的flow的处理器,key 是 flowID
+	httpServer   *gin.Engine
+	agentsLock   sync.RWMutex
 }
 
 func NewServer() *Server {
@@ -136,15 +137,49 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 		switch msg.Type {
 		case protocol.MsgStatus: // 处理最终的任务状态
 			handleStatusUpdate(s, msg)
-		case protocol.MsgTaskStep: // 子任务的状态
+		case protocol.MsgTaskStep:
 			handleStatusUpdate(s, msg)
+		case protocol.MsgTaskResult:
+			handleTaskResult(s, msg)
 		case protocol.MsgHeartbeat:
 			handleHealthCheck(s, msg, conn) // 处理心跳消息
+
 		default:
 			log.Println("unhandled default case", msg)
 		}
 		// 收到有效消息后重置超时计时器
 		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	}
+}
+
+func handleTaskResult(s *Server, msg protocol.Message) {
+	log.Printf("[%s]收到 %s 任务结果: %+v", msg.AgentID, msg.NodeID, msg.Payload)
+	// 更新任务结果到存储中
+	flowExecution, ok := s.stateStorage.Get(msg.FlowExecutionID)
+	if !ok {
+		log.Printf(" [%s]flowExecutionID : %s", msg.FlowExecutionID)
+		return
+	}
+	nodeID := msg.NodeID
+
+	lastState, ok := msg.Payload.(schema.NodeStatus)
+	if !ok {
+		log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), msg.Payload)
+		return
+	}
+	nodeResult := flowExecution.NodeResults[nodeID]
+	nodeResult.Status = lastState
+	nodeResult.EndTime = utils.GetNowTime()
+	flowExecution.NodeResults[nodeID] = nodeResult
+	s.stateStorage.Save(flowExecution)
+	// 触发后面的节点
+	nextNodes := NextNodes(flowExecution.FlowData, nodeID)
+	if len(nextNodes) == 0 {
+		log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
+	}
+	fp := s.fpMap[flowExecution.FlowID]
+	for _, nextNode := range nextNodes {
+		go fp.executeNode(context.Background(), nextNode, s)
 	}
 }
 
@@ -195,7 +230,6 @@ type FlowProcessor struct {
 	FlowID         string
 	flowData       schema.FlowData
 	executors      map[string]nodes.NodeExecutor
-	stateStorage   Storage               // 存储状态
 	statusChan     chan schema.TaskStep  // 把节点里的每个步骤的状态发送到这里
 	nodeStatusChan chan protocol.Message // 把每个节点的状态发送到这里 payload是NodeState
 }
@@ -205,10 +239,10 @@ type FlowProcessor struct {
 // 初始化处理器
 func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 	fp := &FlowProcessor{
-		FlowID:       generateFlowID(),
-		flowData:     flow,
-		executors:    make(map[string]nodes.NodeExecutor),
-		stateStorage: NewFileStorage(""),
+		FlowID:    generateFlowID(),
+		flowData:  flow,
+		executors: make(map[string]nodes.NodeExecutor),
+		//stateStorage: NewFileStorage(""),
 	}
 	for _, node := range flow.Nodes {
 		switch node.Type {
@@ -254,7 +288,7 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 		case "end":
 			fp.RegisterExecutor(node.ID, nodes.NewEndNodeExecutor(node))
 		default:
-			log.Printf(" [%s]未注册的节点类型: %s", utils.GetCallerInfo(1), node.Type)
+			log.Printf(" [%s]未注册的节点类型: %s", utils.GetCallerInfo(), node.Type)
 			return nil, fmt.Errorf("未注册的节点类型: %s", node.Type)
 		}
 	}
@@ -267,12 +301,12 @@ func generateFlowID() string {
 }
 
 // 接收statusChan中的数据 并将数据存到Storage中
-func (fp *FlowProcessor) pushStatusUpdates() {
+func (fp *FlowProcessor) pushStatusUpdates(mem Storage) {
 
 	for {
 		log.Println("pushStatusUpdates waiting...")
 		// 如果存储中没有flowExecution 就创建一个,每次更新的数据都从存储中获取
-		flowExecution, ok := fp.stateStorage.Get(fp.FlowID)
+		flowExecution, ok := mem.Get(fp.FlowID)
 		if !ok {
 			flowExecution = schema.FlowExecution{
 				FlowID:      fp.FlowID,
@@ -309,11 +343,11 @@ func (fp *FlowProcessor) pushStatusUpdates() {
 			// 更新node节点的状态
 			nodeState := flowExecution.NodeResults[state.NodeID]
 			nodeState.Status = nodeStatus
-			fp.stateStorage.Save(flowExecution)
+			mem.Save(flowExecution)
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
 		}
-		fp.stateStorage.Save(flowExecution)
+		mem.Save(flowExecution)
 
 	}
 }
@@ -325,6 +359,7 @@ func (fp *FlowProcessor) ExecuteFlow(ctx context.Context, server *Server) schema
 		StartTime:   utils.GetNowTime(),
 		EndTime:     nil,
 		NodeResults: make(map[string]schema.NodeState),
+		FlowData:    fp.flowData,
 	}
 	//go fp.pushStatusUpdates(server)
 	// 查找开始节点
@@ -335,99 +370,54 @@ func (fp *FlowProcessor) ExecuteFlow(ctx context.Context, server *Server) schema
 			break
 		}
 	}
-	currentNode := []schema.Node{startNode}
 
 	// 执行节点
 	go func() {
 		// ... 原有上下文代码 ...
 
-		for _, node := range currentNode {
+		log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(), startNode.ID)
+		fp.executeNode(ctx, startNode, server)
 
-			log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(0), node.ID)
-			state := fp.executeNode(ctx, node, server)
-			execution.NodeResults[node.ID] = state
-
-			// 使用状态常量代替魔法值
-			if state.Status == schema.NodeStateSuccess {
-				if agent, exists := server.agents[node.ID]; exists {
-					agent.Status = protocol.AgentReady
-				}
-			} else {
-				if agent, exists := server.agents[node.ID]; exists {
-					agent.Status = protocol.TaskCompleted
-				}
-				// 添加错误日志记录
-				log.Printf("节点 %s 执行失败，状态: %s", node.ID, state.Status)
-				break
-			}
-
-			// 使用通道模式处理下游节点
-			nextNodes := NextNodes(fp.flowData, node)
-			if len(nextNodes) == 0 {
-				break
-			}
-
-			// 使用goroutine池处理并行节点
-			var wg sync.WaitGroup
-			for _, nextNode := range nextNodes {
-				wg.Add(1)
-				go func(n schema.Node) {
-					defer wg.Done()
-					// 创建节点执行的副本
-					nodeCopy := n
-					state := fp.executeNode(ctx, nodeCopy, server)
-					execution.NodeResults[nodeCopy.ID] = state
-				}(nextNode)
-			}
-			wg.Wait()
-		}
-
-		// ... 后续代码 ...
 	}()
 	//execution.EndTime = utils.GetNowTime()
-	fp.stateStorage.Save(execution)
+	server.stateStorage.Save(execution)
+	log.Println("执行完成", fp.executors)
 	return execution
 }
 
 // 执行单个节点
-func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, server *Server) schema.NodeState {
-	for {
-		// 等待agent准备就绪 TODO
+func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, server *Server) {
 
-		// 查看存储中是否有当前节点的执行日志
-		flowExecution, ok := fp.stateStorage.Get(node.ID)
-		if !ok {
-			flowExecution = schema.FlowExecution{
-				FlowID:      fp.FlowID,
-				NodeResults: make(map[string]schema.NodeState),
-			}
-		}
-		if CheckDependency(fp.flowData, node, flowExecution) {
-			break
-		}
-		time.Sleep(1 * time.Second)
+	// 查看存储中是否有当前节点的执行日志
+	flowExecution, ok := server.stateStorage.Get(fp.FlowID)
+	if !ok {
+		log.Printf(" [%s]未找到FlowExecution: %s,停止执行", utils.GetCallerInfo(), fp.FlowID)
+		return
 	}
-	// 更新状态
-	state := schema.NodeState{
-		StartTime: utils.GetNowTime(),
+	nodeState, ok := flowExecution.NodeResults[node.ID]
+	if !ok {
+		nodeState = schema.NodeState{
+			ID:     node.ID,
+			Status: schema.NodeStateRunning,
+			Logs:   "",
+			Error:  "",
+		}
+		nodeState.StartTime = utils.GetNowTime()
+	}
+	if CheckDependency(fp.flowData, node, flowExecution) {
+		log.Println("依赖节点执行成功")
+	} else {
+		log.Println("依赖节点未执行成功，停止执行当前节点", node.ID)
+		return
 	}
 
 	executor, exists := fp.executors[node.ID]
 	if !exists {
-		state.Status = "failed"
-		state.Error = fmt.Sprintf("未注册的node节点: %s", node.ID)
-		state.EndTime = utils.GetNowTime()
-		return state
+		log.Printf(" [%s]未找到节点执行器: %s", utils.GetCallerInfo(), node.ID)
+		return
 	}
 	executor.Execute(ctx, fp.statusChan)
-	// 如果是start 或者 node 节点
-	if node.Type == "start" || node.Type == "node" {
-		state.EndTime = utils.GetNowTime()
-		state.Status = schema.NodeStateSuccess
-	} else {
-		state.Status = schema.NodeStateRunning
-	}
-	return state
+
 }
 
 // 注册节点处理器
