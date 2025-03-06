@@ -54,7 +54,6 @@ func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri
 }
 
 func sendStatus(conn *websocket.Conn, status schema.TaskStep) {
-
 	event, err := protocol.NewMessage(protocol.MsgTaskStep, status.FlowExecutionID, status.AgentID,
 		status.NodeID, status)
 	if err != nil {
@@ -83,6 +82,7 @@ func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn
 	if err != nil {
 		step.Status = schema.TaskStateFailed
 		step.Error = err.Error()
+		log.Printf("[%s]执行步骤[%s]失败：%v", utils.GetCallerInfo(), stepName, err)
 		return false
 	}
 	return true

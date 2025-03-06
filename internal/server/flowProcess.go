@@ -8,7 +8,6 @@ import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
-	"time"
 )
 
 // FlowProcessor 是流程处理器的数据结构
@@ -154,9 +153,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 					go fp.executeNode(nextNode, s)
 				}
 			}
-		case <-time.After(10 * time.Second):
-			log.Println(fp.taskStepChan, fp.taskResultChan)
-			log.Println("10秒未收到状态更新")
+
 		}
 		mem.Save(flowExecution)
 	}
