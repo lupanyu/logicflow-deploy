@@ -72,7 +72,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 		{
 			"健康检查",
 			func() ([]byte, error) {
-				return CheckAPPHealth(j.agentID, j.conn, msg.NodeID, task.Port, task.HealthUri, time.Duration(task.HealthCheckTimeout)*time.Second)
+				return CheckAPPHealth(status, j.conn, task.Port, task.HealthUri, time.Duration(task.HealthCheckTimeout)*time.Second)
 			},
 			nil,
 		},

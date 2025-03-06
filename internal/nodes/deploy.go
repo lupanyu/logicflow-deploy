@@ -34,8 +34,8 @@ func Rollback(backup, new, service string) ([]byte, error) {
 	return utils.RunShell("cp -r " + backup + " " + new)
 }
 
-func CheckAPPHealth(agentID string, conn *websocket.Conn, nodeId string, port int, uri string, timeout time.Duration) ([]byte, error) {
-	status := schema.NewTaskStep(agentID, nodeId, "健康检查", schema.TaskStateSuccess, "", "")
+func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri string, timeout time.Duration) ([]byte, error) {
+	status.Setup = "健康检查"
 	defer sendStatus(conn, *status)
 	client := http.Client{Timeout: 3 * time.Second}
 	endTime := time.Now().Add(timeout)
