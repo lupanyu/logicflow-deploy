@@ -3,7 +3,6 @@ package nodes
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
@@ -38,7 +37,6 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 		}
 	}()
 	//
-	log.Printf("[%s]开始处理Java部署任务: %v ...", utils.GetCallerInfo(), msg)
 	// 初始化状态上报
 	status := schema.NewTaskStep(msg.FlowExecutionID, j.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
 	sendStatus(j.conn, *status)

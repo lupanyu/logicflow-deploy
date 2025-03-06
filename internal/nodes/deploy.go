@@ -61,11 +61,13 @@ func sendStatus(conn *websocket.Conn, status schema.TaskStep) {
 		log.Printf("[%s]发送状态失败：%v", utils.GetCallerInfo(), err)
 		return
 	}
+	log.Printf("[%s]发送部署任务的状态：%v", utils.GetCallerInfo(), event)
 	_ = conn.WriteJSON(event)
 }
 
 func sendLastResult(conn *websocket.Conn, data protocol.Message) {
 	data.Timestamp = time.Now().UnixNano()
+	log.Printf("[%s]发送部署任务的最后结果：%v", utils.GetCallerInfo(), data)
 	_ = conn.WriteJSON(data)
 }
 
