@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/server"
@@ -28,7 +27,7 @@ func (c *DeployController) StartDeploy(ctx *gin.Context, s *server.Server) {
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	flowExecution := process.ExecuteFlow(context.Background(), s)
+	flowExecution := process.ExecuteFlow(s)
 	ctx.JSON(200, flowExecution)
 }
 

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"encoding/json"
+	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"os"
 )
@@ -19,8 +20,14 @@ type BuildNodeExecutor struct {
 	out     *os.File
 }
 
-func (b *BuildNodeExecutor) Execute() schema.TaskStep {
-	return schema.TaskStep{}
+func (b *BuildNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
+	ch <- schema.TaskStep{
+		FlowExecutionID: flowExecutionID,
+		Status:          schema.TaskStateSuccess,
+		NodeID:          nodeID,
+		Setup:           "开始构建",
+		Output:          schema.NewOutLog(schema.LevelInfo, "开始构建"),
+	}
 }
 func (b *BuildNodeExecutor) NodeType() string {
 	return "build"

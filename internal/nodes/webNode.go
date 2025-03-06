@@ -4,6 +4,7 @@ import (
 	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
+	"logicflow-deploy/internal/utils"
 )
 
 type WebNodeExecuter struct {
@@ -11,12 +12,14 @@ type WebNodeExecuter struct {
 	agent      *protocol.AgentConnection
 }
 
-func (w *WebNodeExecuter) Execute() schema.TaskStep {
+func (w *WebNodeExecuter) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
 	stat := schema.TaskStep{
-		Status:  schema.TaskStateSuccess,
-		Setup:   "发送部署指令",
-		AgentID: w.properties.Host,
-		Output:  schema.NewOutLog(schema.LevelInfo, "开始应用部署"),
+		FlowExecutionID: flowExecutionID,
+		NodeID:          nodeID,
+		Status:          schema.TaskStateSuccess,
+		Setup:           "发送部署指令",
+		AgentID:         w.properties.Host,
+		Output:          schema.NewOutLog(schema.LevelInfo, "开始应用部署"),
 	}
 
 	// 执行部署命令
@@ -24,11 +27,11 @@ func (w *WebNodeExecuter) Execute() schema.TaskStep {
 	if err != nil {
 		stat.Status = schema.TaskStateFailed
 		stat.Error = schema.NewOutLog(schema.LevelError, err.Error())
-		log.Println("向%s发送部署指令异常，参数是：%s， 错误是: %v", w.properties.Host, w.properties, err.Error())
+		log.Printf("[%s] 向%s发送部署指令异常，参数是：%v， 错误是: %v", utils.GetCallerInfo(), w.properties.Host, w.properties, err.Error())
 	} else {
-		log.Println("向%s发送部署指令成功，参数是：%s", w.properties.Host, w.properties)
+		log.Printf("[%s] 向%s发送部署指令成功，参数是：%v", utils.GetCallerInfo(), w.properties.Host, w.properties)
 	}
-	return stat
+	ch <- stat
 }
 func (w *WebNodeExecuter) NodeType() string {
 	return "web"

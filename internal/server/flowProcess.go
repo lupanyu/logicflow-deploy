@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
@@ -10,6 +9,7 @@ import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
+	"time"
 )
 
 // FlowProcessor 是流程处理器的数据结构
@@ -26,11 +26,13 @@ type FlowProcessor struct {
 // 初始化处理器
 func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 	fp := &FlowProcessor{
-		FlowID:       generateFlowID(),
-		flowData:     flow,
-		executors:    make(map[string]nodes.NodeExecutor),
-		taskStepChan: make(chan schema.TaskStep),
+		FlowID:         generateFlowID(),
+		flowData:       flow,
+		executors:      make(map[string]nodes.NodeExecutor),
+		taskStepChan:   make(chan schema.TaskStep),
+		taskResultChan: make(chan protocol.Message),
 	}
+	log.Printf("[%s] 初始化流程处理器: %v", utils.GetCallerInfo(), fp)
 	for _, node := range flow.Nodes {
 		switch node.Type {
 		case "start":
@@ -44,7 +46,7 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 			if err != nil {
 				return nil, err
 			}
-			log.Println("反序列化properties", data)
+			log.Println("反序列化java properties", data)
 
 			host, ok := s.GetAgentConnection(data.Host)
 			if !ok {
@@ -65,7 +67,7 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 			if err != nil {
 				return nil, err
 			}
-			log.Println("反序列化properties", data)
+			log.Println("反序列化web properties", data)
 
 			host, ok := s.GetAgentConnection(data.Host)
 			if !ok {
@@ -81,6 +83,25 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 	}
 	// 把fp添加到server的fpMap中
 	s.fpMap[fp.FlowID] = fp
+	// 初始化存储数据
+	flowExecution := schema.FlowExecution{
+		FlowID:       fp.FlowID,
+		GlobalStatus: schema.NodeStatePending,
+		FlowData:     fp.flowData,
+		NodeResults:  make(map[string]schema.NodeState),
+	}
+	// 写入初始node数据
+	for _, node := range fp.flowData.Nodes {
+		flowExecution.NodeResults[node.ID] = schema.NodeState{
+			Status: schema.NodeStatePending,
+			Logs:   "",
+			Error:  "",
+			ID:     node.ID,
+			Type:   node.Type,
+		}
+	}
+
+	s.stateStorage.Save(flowExecution)
 	return fp, nil
 }
 
@@ -90,10 +111,9 @@ func generateFlowID() string {
 }
 
 // // 接收statusChan中的数据 并将数据存到Storage中
-func (fp *FlowProcessor) pushStatusUpdates(mem Storage) {
+func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 
 	for {
-		log.Println("waiting task step...")
 		// 如果存储中没有flowExecution 就创建一个,每次更新的数据都从存储中获取
 		flowExecution, ok := mem.Get(fp.FlowID)
 		if !ok {
@@ -102,21 +122,13 @@ func (fp *FlowProcessor) pushStatusUpdates(mem Storage) {
 				NodeResults: make(map[string]schema.NodeState),
 			}
 		}
+		log.Println("waiting task status info...")
 		select {
 		// 收到状态更新
 		case taskStep := <-fp.taskStepChan:
-			// 把每一步的日志更新到flowExecution中
-			taskStepData, ok := flowExecution.NodeResults[taskStep.NodeID]
-			if !ok {
-				// 如果没有当前node的执行日志就创建一个，并初始化它的数据
-				taskStepData = schema.NodeState{
-					ID:     taskStep.NodeID,
-					Status: schema.NodeStateRunning,
-					Logs:   "",
-					Error:  "",
-				}
-				taskStepData.StartTime = utils.GetNowTime()
-			}
+			log.Printf("收到 taskstep: %v", taskStep)
+			// 把每一步的日志更新到 flowExecution 中
+			taskStepData := flowExecution.NodeResults[taskStep.NodeID]
 			taskStepData.Logs += string(taskStep.Status) + taskStep.Output
 			taskStepData.Error = taskStep.Error
 			flowExecution.NodeResults[taskStep.NodeID] = taskStepData
@@ -129,27 +141,38 @@ func (fp *FlowProcessor) pushStatusUpdates(mem Storage) {
 				log.Printf(" [%s]反序列化状态消息失败: %v", err)
 				return
 			}
+			log.Printf(" [%s]反序列化状态消息成功: %v", utils.GetCallerInfo(), nodeStatus)
 			// 更新node节点的状态
 			nodeState := flowExecution.NodeResults[state.NodeID]
 			nodeState.Status = nodeStatus
 			mem.Save(flowExecution)
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
+			if flowExecution.NodeResults[state.NodeID].Type == "start" {
+				nextNodes := NextNodes(flowExecution.FlowData, state.NodeID)
+				for _, nextNode := range nextNodes {
+					go fp.executeNode(nextNode, s)
+				}
+			}
+		case <-time.After(10 * time.Second):
+			log.Println(fp.taskStepChan, fp.taskResultChan)
+			log.Println("10秒未收到状态更新")
 		}
 		mem.Save(flowExecution)
 	}
 }
 
 // 执行flow
-func (fp *FlowProcessor) ExecuteFlow(ctx context.Context, server *Server) schema.FlowExecution {
-	execution := schema.FlowExecution{
-		FlowID:      fp.FlowID,
-		StartTime:   utils.GetNowTime(),
-		EndTime:     nil,
-		NodeResults: make(map[string]schema.NodeState),
-		FlowData:    fp.flowData,
+func (fp *FlowProcessor) ExecuteFlow(server *Server) schema.FlowExecution {
+	execution, ok := server.stateStorage.Get(fp.FlowID)
+	if !ok {
+		return schema.FlowExecution{}
 	}
-	go fp.pushStatusUpdates(server.stateStorage)
+	// 保存flowExecution
+	server.stateStorage.Save(execution)
+
+	// 启动状态工厂
+	go fp.statusFactory(server.stateStorage, server)
 	// 查找开始节点
 	var startNode schema.Node
 	for _, node := range fp.flowData.Nodes {
@@ -158,23 +181,15 @@ func (fp *FlowProcessor) ExecuteFlow(ctx context.Context, server *Server) schema
 			break
 		}
 	}
+	log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(), startNode.ID)
 
 	// 执行节点
-	go func() {
-		// ... 原有上下文代码 ...
-
-		log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(), startNode.ID)
-		fp.executeNode(ctx, startNode, server)
-
-	}()
-	//execution.EndTime = utils.GetNowTime()
-	server.stateStorage.Save(execution)
-	log.Println("执行完成", fp.executors)
+	go fp.executeNode(startNode, server)
 	return execution
 }
 
 // 执行单个节点
-func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, server *Server) {
+func (fp *FlowProcessor) executeNode(node schema.Node, server *Server) {
 
 	// 查看存储中是否有当前节点的执行日志
 	flowExecution, ok := server.stateStorage.Get(fp.FlowID)
@@ -182,16 +197,7 @@ func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, serv
 		log.Printf(" [%s]未找到FlowExecution: %s,停止执行", utils.GetCallerInfo(), fp.FlowID)
 		return
 	}
-	nodeState, ok := flowExecution.NodeResults[node.ID]
-	if !ok {
-		nodeState = schema.NodeState{
-			ID:     node.ID,
-			Status: schema.NodeStateRunning,
-			Logs:   "",
-			Error:  "",
-		}
-		nodeState.StartTime = utils.GetNowTime()
-	}
+
 	if CheckDependency(fp.flowData, node, flowExecution) {
 		log.Println("依赖节点执行成功")
 	} else {
@@ -204,11 +210,8 @@ func (fp *FlowProcessor) executeNode(ctx context.Context, node schema.Node, serv
 		log.Printf(" [%s]未找到节点执行器: %s", utils.GetCallerInfo(), node.ID)
 		return
 	}
-	result := executor.Execute()
-
-	// 把节点的执行结果发送到taskStepChan中
-	fp.taskStepChan <- result
-	// 把节点的执行结果更新到存储中
+	log.Printf("[%s]执行节点:%s", utils.GetCallerInfo(), node.ID)
+	executor.Execute(fp.FlowID, node.ID, fp.taskStepChan, fp.taskResultChan)
 
 }
 

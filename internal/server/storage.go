@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"logicflow-deploy/internal/schema"
+	"logicflow-deploy/internal/utils"
 	"os"
 )
 
@@ -28,7 +29,7 @@ func NewMemoryStorage() Storage {
 // Save 方法用于保存流程执行状态
 func (ms *MemoryStorage) Save(execution schema.FlowExecution) {
 	ms.executions[execution.FlowID] = execution
-	log.Printf(" [%s]Saved flow execution with ID: %s", execution.FlowID)
+	log.Printf(" [%s]Saved flow execution with ID: %s", utils.GetCallerInfo(), execution.FlowID)
 }
 
 // Get 方法用于获取指定 ID 的流程执行状态

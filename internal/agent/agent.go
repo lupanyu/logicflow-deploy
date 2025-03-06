@@ -56,7 +56,9 @@ func (a *DeploymentAgent) Run() {
 		case protocol.MsgWebDeploy:
 			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.WebProperties))
 		case protocol.MsgJavaDeploy:
-			go nodes.NewJavaDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.JavaProperties))
+			java := msg.Payload.(schema.JavaProperties)
+			node := nodes.NewJavaDeployNode(a.agentID, a.wsConn)
+			go node.Run(msg, java)
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
 		default:

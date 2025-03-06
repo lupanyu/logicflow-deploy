@@ -52,7 +52,8 @@ type Point struct {
 
 // 每个节点的执行状态，用以判断节点是否在运行、成功、失败等状态,在node 结束后传递这个结构给server
 type NodeState struct {
-	ID        string     `json:"id"`     // flowData node 节点的id
+	ID        string     `json:"id"` // flowData node 节点的id
+	Type      string     `json:"type"`
 	Status    NodeStatus `json:"status"` // 状态: pending/running/success/failed
 	StartTime *time.Time `json:"startTime"`
 	EndTime   *time.Time `json:"endTime"`

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/mapstructure"
@@ -26,8 +25,9 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		agents: make(map[string]*protocol.AgentConnection),
-		fpMap:  make(map[string]*FlowProcessor),
+		agents:       make(map[string]*protocol.AgentConnection),
+		stateStorage: NewMemoryStorage(),
+		fpMap:        make(map[string]*FlowProcessor),
 	}
 }
 func (s *Server) SetHttp(g *gin.Engine) {
@@ -168,7 +168,7 @@ func handleTaskResult(s *Server, msg protocol.Message) {
 		log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 	}
 	for _, nextNode := range nextNodes {
-		go fp.executeNode(context.Background(), nextNode, s)
+		go fp.executeNode(nextNode, s)
 	}
 }
 
