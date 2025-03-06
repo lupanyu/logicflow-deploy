@@ -4,21 +4,12 @@ import (
 	"encoding/json"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
-	"time"
 )
 
 type EndNodeExecutor struct{}
 
 func (e *EndNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
-	stat := protocol.Message{
-		FlowExecutionID: flowExecutionID,
-		Type:            protocol.MsgTaskResult,
-		AgentID:         "",
-		NodeID:          nodeID,
-		Timestamp:       time.Now().Unix(),
-		Payload:         schema.NodeStateSuccess,
-	}
-
+	stat, _ := protocol.NewMessage(protocol.MsgTaskResult, flowExecutionID, "", nodeID, schema.NodeStateSuccess)
 	result <- stat
 }
 

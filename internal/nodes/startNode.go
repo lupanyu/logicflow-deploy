@@ -3,22 +3,14 @@ package nodes
 import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
-	"time"
 )
 
 type StartNodeExecutor struct {
 }
 
 func (e *StartNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
-	stat := protocol.Message{
-		FlowExecutionID: flowExecutionID,
-		Type:            protocol.MsgTaskResult,
-		AgentID:         "",
-		NodeID:          nodeID,
-		Timestamp:       time.Now().Unix(),
-		Payload:         schema.NodeStateSuccess,
-	}
 
+	stat, _ := protocol.NewMessage(protocol.MsgTaskResult, flowExecutionID, "start", nodeID, schema.NodeStateSuccess)
 	result <- stat
 }
 

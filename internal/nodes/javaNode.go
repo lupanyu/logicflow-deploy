@@ -5,7 +5,6 @@ import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
-	"time"
 )
 
 type JavaNodeExecutor struct {
@@ -32,7 +31,7 @@ func (e *JavaNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schem
 	}
 
 	// 执行部署命令
-	err := e.deploy()
+	err := e.deploy(flowExecutionID, nodeID)
 	if err != nil {
 		stat.Status = schema.TaskStateFailed
 		stat.Error = schema.NewOutLog(schema.LevelError, err.Error())
@@ -44,14 +43,9 @@ func (e *JavaNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schem
 }
 
 // 向agent发送部署命令
-func (e *JavaNodeExecutor) deploy() error {
-	data := protocol.Message{
-		Type:            protocol.MsgJavaDeploy,
-		FlowExecutionID: "",
-		AgentID:         e.properties.Host,
-		Payload:         e.properties,
-		Timestamp:       time.Now().UnixNano(),
-	}
+func (e *JavaNodeExecutor) deploy(flowExecutionID, nodeID string) error {
+
+	data, _ := protocol.NewMessage(protocol.MsgJavaDeploy, flowExecutionID, e.properties.Host, nodeID, e.properties)
 	log.Printf("[%s] 向%s发送部署指令 参数是：%v", utils.GetCallerInfo(), e.properties.Host, data)
 
 	return e.agent.Conn.WriteJSON(data)

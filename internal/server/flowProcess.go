@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/mitchellh/mapstructure"
 	"log"
 	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
@@ -136,9 +135,11 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 		case state := <-fp.taskResultChan:
 			// 提取关键状态参数信息
 			var nodeStatus schema.NodeStatus
-			err := mapstructure.Decode(state.Payload, &nodeStatus)
+			err := protocol.UnMarshalPayload(state.Payload, &nodeStatus)
+			log.Printf("[%s]收到executionFlowID %s nodeId %s taskresult: %s", utils.GetCallerInfo(),
+				state.FlowExecutionID, state.NodeID, nodeStatus)
 			if err != nil {
-				log.Printf(" [%s]反序列化状态消息失败: %v", err)
+				log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), err)
 				return
 			}
 			log.Printf(" [%s]反序列化状态消息成功: %v", utils.GetCallerInfo(), nodeStatus)

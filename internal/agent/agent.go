@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/goccy/go-json"
 	"log"
 	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
@@ -54,31 +55,40 @@ func (a *DeploymentAgent) Run() {
 			// ...
 			log.Printf(" [%s]收到注册响应消息: %+v", utils.GetCallerInfo(), msg)
 		case protocol.MsgWebDeploy:
-			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, msg.Payload.(schema.WebProperties))
+			var web schema.WebProperties
+			if err := json.Unmarshal(msg.Payload, &web); err != nil {
+				log.Printf(" [%s]解析Web部署消息失败: %v", utils.GetCallerInfo(), err)
+				continue
+			}
+			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, web)
 		case protocol.MsgJavaDeploy:
-			java := msg.Payload.(schema.JavaProperties)
+			var java schema.JavaProperties
+			if err := json.Unmarshal(msg.Payload, &java); err != nil {
+				log.Printf(" [%s]解析Java部署消息失败: %v", utils.GetCallerInfo(), err)
+				continue
+			}
 			node := nodes.NewJavaDeployNode(a.agentID, a.wsConn)
 			go node.Run(msg, java)
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
 		default:
 			log.Printf(" [%s]未知消息类型: %s", utils.GetCallerInfo(), msg.Type)
-			a.sendErrorResponse(msg.FlowExecutionID, "unsupported message type")
+			a.sendErrorResponse(msg.FlowExecutionID, msg.NodeID, "unsupported message type")
 		}
 	}
 }
 
 // 新增错误响应方法
-func (a *DeploymentAgent) sendErrorResponse(taskID string, reason string) {
-	event := protocol.Message{
-		Type:            protocol.MsgError,
-		FlowExecutionID: taskID,
-		AgentID:         a.agentID,
-		Timestamp:       time.Now().UnixNano(),
-		Payload: schema.ErrorDetail{
-			Code:    400,
-			Message: reason,
-		},
+func (a *DeploymentAgent) sendErrorResponse(taskID, nodeID string, reason string) {
+	payload := schema.ErrorDetail{
+		Code:    400,
+		Message: reason,
+	}
+
+	event, err := protocol.NewMessage(protocol.MsgTaskResult, taskID, a.agentID, nodeID, payload)
+	if err != nil {
+		log.Printf(" [%s]创建错误响应消息失败: %v", utils.GetCallerInfo(), err)
+		return
 	}
 	a.wsConn.WriteJSON(event)
 }
@@ -101,13 +111,12 @@ func (a *DeploymentAgent) Heartbeat() {
 	for {
 		select {
 		case <-ticker.C:
-			heartbeat := protocol.Message{
-				Type:      protocol.MsgHeartbeat,
-				AgentID:   a.agentID,
-				Timestamp: time.Now().UnixNano(),
-				Payload:   "ping",
+			heartbeat, err := protocol.NewMessage(protocol.MsgHeartbeat, "", a.agentID, "", "ping")
+			if err != nil {
+				log.Printf(" [%s]心跳消息创建失败: %v", utils.GetCallerInfo(), err)
+				continue
 			}
-			if err := a.wsConn.WriteJSON(heartbeat); err != nil {
+			if err = a.wsConn.WriteJSON(heartbeat); err != nil {
 				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(), err)
 				return
 			} else {

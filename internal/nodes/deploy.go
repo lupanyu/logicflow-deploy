@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
@@ -35,7 +36,7 @@ func Rollback(backup, new, service string) ([]byte, error) {
 
 func CheckAPPHealth(agentID string, conn *websocket.Conn, nodeId string, port int, uri string, timeout time.Duration) ([]byte, error) {
 	status := schema.NewTaskStep(agentID, nodeId, "健康检查", schema.TaskStateSuccess, "", "")
-	defer sendStatus(conn, agentID, *status)
+	defer sendStatus(conn, *status)
 	client := http.Client{Timeout: 3 * time.Second}
 	endTime := time.Now().Add(timeout)
 
@@ -52,13 +53,13 @@ func CheckAPPHealth(agentID string, conn *websocket.Conn, nodeId string, port in
 	return nil, errors.New("健康检查超时")
 }
 
-func sendStatus(conn *websocket.Conn, agentID string, status schema.TaskStep) {
-	event := protocol.Message{
-		Type:            protocol.MsgTaskStep,
-		FlowExecutionID: status.FlowExecutionID,
-		AgentID:         agentID,
-		Timestamp:       time.Now().UnixNano(),
-		Payload:         status,
+func sendStatus(conn *websocket.Conn, status schema.TaskStep) {
+
+	event, err := protocol.NewMessage(protocol.MsgTaskStep, status.FlowExecutionID, status.AgentID,
+		status.NodeID, status)
+	if err != nil {
+		log.Printf("[%s]发送状态失败：%v", utils.GetCallerInfo(), err)
+		return
 	}
 	_ = conn.WriteJSON(event)
 }

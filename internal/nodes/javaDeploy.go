@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
+	"logicflow-deploy/internal/utils"
 	"time"
 )
 
@@ -28,20 +29,17 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 			for _, fn := range rollbackFn {
 				fn()
 			}
-			sendLastResult(j.conn, protocol.Message{
-				Type:            protocol.MsgTaskResult,
-				FlowExecutionID: msg.FlowExecutionID,
-				AgentID:         j.agentID,
-				NodeID:          msg.NodeID,
-				Timestamp:       time.Now().UnixNano(),
-				Payload:         schema.NodeStateRollbacked,
-			})
+			data, err := protocol.NewMessage(protocol.MsgTaskResult, msg.FlowExecutionID, j.agentID, msg.NodeID, schema.NodeStateRollbacked)
+			if err != nil {
+				fmt.Printf("[%s] 生成消息异常，错误是：%v", utils.GetCallerInfo(), err.Error())
+			}
+			sendLastResult(j.conn, data)
 		}
 	}()
 
 	// 初始化状态上报
 	status := schema.NewTaskStep(j.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
-	sendStatus(j.conn, j.agentID, *status)
+	sendStatus(j.conn, *status)
 
 	// 部署步骤集合
 	steps := []struct {

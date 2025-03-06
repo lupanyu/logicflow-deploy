@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mitchellh/mapstructure"
 	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
@@ -60,44 +59,44 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 	// 处理注册消息
 	var registerMsg protocol.Message
 	if err := conn.ReadJSON(&registerMsg); err != nil {
-		log.Printf(" [%s]读取注册消息失败: %v", err)
+		log.Printf(" [%s]读取注册消息失败: %v", utils.GetCallerInfo(), err)
 		return
 	}
-	var agentID string
+	data, _ := protocol.NewMessage(protocol.MsgRegisterResponse, registerMsg.FlowExecutionID, registerMsg.AgentID,
+		registerMsg.NodeID, nil)
+
 	// 验证消息格式
 	if registerMsg.Type != protocol.MsgRegister {
-		_ = conn.WriteJSON(protocol.Message{
-			Type:      protocol.MsgRegisterResponse,
-			AgentID:   registerMsg.AgentID,
-			Timestamp: time.Now().UnixNano(),
-			Payload: protocol.MessageAuthResponse{Code: 401,
-				Message: "Invalid message type"},
-		})
-		log.Printf(" [%s]收到无效消息: %+v", registerMsg)
+		err := data.UpdatePayload(protocol.MessageAuthResponse{Code: 401, Message: "Invalid message type"})
+		if err != nil {
+			log.Printf(" [%s]创建消息失败: %v", generateFlowID(), err)
+			return
+		}
+		_ = conn.WriteJSON(data)
+		log.Printf(" [%s]收到无效消息: %+v", utils.GetCallerInfo(), registerMsg)
 		return
 	} else {
 		if registerMsg.AgentID == "" {
-			_ = conn.WriteJSON(protocol.Message{
-				Type:      protocol.MsgRegisterResponse,
-				AgentID:   registerMsg.AgentID,
-				Timestamp: time.Now().UnixNano(),
-				Payload: protocol.MessageAuthResponse{Code: 401,
-					Message: "Invalid agent id"},
-			})
-			log.Printf(" [%s]收到无效消息: %+v", registerMsg)
-			if err := conn.Close(); err != nil {
-				log.Printf(" [%s]关闭连接失败: %v", err)
+			err := data.UpdatePayload(protocol.MessageAuthResponse{Code: 401, Message: "Invalid message type"})
+			if err != nil {
+				log.Printf(" [%s]创建消息失败: %v", generateFlowID(), err)
+				return
+			}
+			log.Printf(" [%s]收到无效消息: %+v", generateFlowID(), registerMsg)
+			if err = conn.Close(); err != nil {
+				log.Printf(" [%s]关闭连接失败: %v", generateFlowID(), err)
 			}
 			return
 		}
-		agentID = registerMsg.AgentID
-		conn.WriteJSON(protocol.Message{
-			Type:      protocol.MsgRegisterResponse,
-			AgentID:   registerMsg.AgentID,
-			Timestamp: time.Now().UnixNano(),
-			Payload: protocol.MessageAuthResponse{Code: 200,
-				Message: "注册成功"},
-		})
+		err := data.UpdatePayload(protocol.MessageAuthResponse{Code: 200, Message: "注册成功"})
+		if err != nil {
+			log.Printf(" [%s]创建消息失败: %v", generateFlowID(), err)
+			return
+		}
+		response, _ := protocol.NewMessage(protocol.MsgRegisterResponse, registerMsg.FlowExecutionID,
+			registerMsg.AgentID, registerMsg.NodeID,
+			protocol.MessageAuthResponse{Code: 200, Message: "注册成功"})
+		conn.WriteJSON(response)
 	}
 
 	//把agent加入到server的map中
@@ -107,15 +106,15 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 		LastActive: time.Now(),
 		Status:     protocol.AgentReady,
 	}
-	s.agents[agentID] = agent
-	log.Println("新添加的agent", agentID, agent, s.agents)
+	s.agents[registerMsg.AgentID] = agent
+	log.Println("新添加的agent", registerMsg.AgentID, agent, s.agents)
 	s.agentsLock.Unlock()
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Printf(" [%s]关闭%s连接失败: %v", agentID, err)
+			log.Printf(" [%s]关闭%s连接失败: %v", utils.GetCallerInfo(), registerMsg.AgentID, err)
 		} else {
-			log.Printf(" [%s]关闭%s连接成功: %v", agentID, err)
+			log.Printf(" [%s]关闭%s连接成功: %v", utils.GetCallerInfo(), registerMsg.AgentID, err)
 		}
 	}()
 	log.Println("等待消息...")
@@ -123,13 +122,13 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 		var msg protocol.Message
 		if err := conn.ReadJSON(&msg); err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				log.Printf(" [%s]读取%s消息超时:%v", agentID, err)
+				log.Printf(" [%s]读取%s消息超时:%v", utils.GetCallerInfo(), registerMsg.AgentID, err)
 			} else {
-				log.Printf(" [%s]读取%s消息失败: %v", agentID, err)
+				log.Printf(" [%s]读取%s消息失败: %v", utils.GetCallerInfo(), registerMsg.AgentID, err)
 			}
 			// 把agent从map中移除
 			s.agentsLock.Lock()
-			delete(s.agents, agentID)
+			delete(s.agents, registerMsg.AgentID)
 			s.agentsLock.Unlock()
 			break
 		}
@@ -154,7 +153,8 @@ func handleTaskResult(s *Server, msg protocol.Message) {
 	log.Printf("[%s]收到 %s 任务结果: %+v", msg.AgentID, msg.NodeID, msg.Payload)
 	// 更新任务结果到存储中
 	fp := s.fpMap[msg.FlowExecutionID]
-	fp.taskStepChan <- msg.Payload.(schema.TaskStep)
+
+	fp.taskResultChan <- msg
 
 	// 触发后面的节点
 	flowExecution, ok := s.stateStorage.Get(msg.FlowExecutionID)
@@ -182,14 +182,8 @@ func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 		return
 	}
 	agent.LastActive = time.Now()
-
-	// 回复心跳响应
-	response := protocol.Message{
-		Type:      protocol.MsgHeartbeat,
-		AgentID:   agentID,
-		Timestamp: time.Now().UnixNano(),
-		Payload:   "pong",
-	}
+	// 发送心跳响应
+	response, _ := protocol.NewMessage(protocol.MsgHeartbeat, msg.FlowExecutionID, msg.AgentID, msg.NodeID, "pong")
 	_ = conn.WriteJSON(response)
 
 }
@@ -197,19 +191,13 @@ func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 // 处理agent的任务状态更新
 func handleTaskStepUpdate(s *Server, msg protocol.Message) {
 	// 处理Agent状态更新
-	agentID := msg.AgentID
-	// 反序列化消息
-	var statusMsg schema.TaskStatus
-	err := mapstructure.Decode(msg.Payload, &statusMsg)
+	var statusMsg schema.TaskStep
+	err := protocol.UnMarshalPayload(msg.Payload, statusMsg)
 	if err != nil {
-		log.Printf(" [%s]反序列化状态消息失败: %v", err)
+		log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), err)
 		return
 	}
-	// 更新Agent状态和最后活跃时间
-	connection, ok := s.agents[agentID]
-	if !ok {
-		log.Printf(" [%s]未找到AgentID: %s", agentID)
-		return
-	}
-	connection.LastActive = time.Now()
+
+	fp := s.fpMap[msg.FlowExecutionID]
+	fp.taskStepChan <- statusMsg
 }
