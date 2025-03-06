@@ -143,7 +143,7 @@ func (a *DeploymentAgent) Connect() {
 		Timestamp: time.Now().UnixNano(),
 	}
 	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(), registerMsg)
-	if err := conn.WriteJSON(registerMsg); err != nil {
+	if err = conn.WriteJSON(registerMsg); err != nil {
 		conn.Close()
 		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(), err)
 	}

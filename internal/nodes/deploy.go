@@ -70,18 +70,19 @@ func sendLastResult(conn *websocket.Conn, data protocol.Message) {
 }
 
 // 错误处理闭包
-func handleStep(agentID, nodeId, stepName string, fn func() ([]byte, error)) bool {
-	status := schema.NewTaskStep(agentID, nodeId, stepName, schema.TaskStateSuccess, "", "")
+func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn func() ([]byte, error)) bool {
+	step.Setup = stepName
+	// 统一处理结果发送
+	defer sendStatus(conn, *step)
+
 	out, err := fn()
+	step.Output = string(out)
+
 	if err != nil {
-		status.Status = schema.TaskStateFailed
-		status.Output = string(out)
-		status.Error = err.Error()
-		//a.sendStatus(*status)
+		step.Status = schema.TaskStateFailed
+		step.Error = err.Error()
 		return false
 	}
-	status.Output = string(out)
-	//a.sendStatus(*status)
 	return true
 }
 

@@ -40,7 +40,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 	//
 	log.Printf("[%s]开始处理Java部署任务: %v ...", utils.GetCallerInfo(), msg)
 	// 初始化状态上报
-	status := schema.NewTaskStep(j.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
+	status := schema.NewTaskStep(msg.FlowExecutionID, j.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
 	sendStatus(j.conn, *status)
 
 	// 部署步骤集合
@@ -79,7 +79,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 	}
 
 	for _, step := range steps {
-		if !handleStep(j.agentID, step.name, msg.NodeID, step.action) {
+		if !handleStep(status, step.name, j.conn, step.action) {
 			return
 		}
 		if step.rollback != nil {

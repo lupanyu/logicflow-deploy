@@ -39,14 +39,15 @@ type TaskStep struct {
 	Error           string     `json:"error"`
 }
 
-func NewTaskStep(agentId, nodeId, setup string, status TaskStatus, output string, err string) *TaskStep {
+func NewTaskStep(flowExecutionId, agentId, nodeId, setup string, status TaskStatus, output string, err string) *TaskStep {
 	return &TaskStep{
-		AgentID: agentId,
-		NodeID:  nodeId,
-		Setup:   setup,
-		Status:  status,
-		Output:  output,
-		Error:   err,
+		FlowExecutionID: flowExecutionId,
+		AgentID:         agentId,
+		NodeID:          nodeId,
+		Setup:           setup,
+		Status:          status,
+		Output:          output,
+		Error:           err,
 	}
 }
 
