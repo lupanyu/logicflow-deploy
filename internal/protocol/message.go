@@ -53,6 +53,6 @@ func (m *Message) UpdatePayload(payload interface{}) error {
 	return nil
 }
 
-func UnMarshalPayload(payload json.RawMessage, data interface{}) error {
-	return json.Unmarshal(payload, &data)
+func UnMarshalPayload(payload json.RawMessage, data any) error {
+	return json.Unmarshal(payload, data)
 }

@@ -2,8 +2,9 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"logicflow-deploy/internal/schema"
+	"logicflow-deploy/internal/utils"
 	"os"
 	"path/filepath"
 	"time"
@@ -80,9 +81,10 @@ func CheckDependency(flowData schema.FlowData, currentNode schema.Node, f schema
 	}
 	for _, dep := range dependency {
 		status := f.NodeResults[dep.ID]
+		log.Printf("[%s] 查到mem中存储的依赖节点状态信息是：%v", utils.GetCallerInfo(), status)
 		if status.Status != schema.NodeStateSuccess {
 			// 依赖的节点没有执行成功
-			fmt.Printf("%s depends on %s : %s", status.Status, dep.ID, status.Error)
+			log.Printf("%s depends on %s : %s", status.Status, dep.ID, status.Status)
 			return false
 		}
 	}

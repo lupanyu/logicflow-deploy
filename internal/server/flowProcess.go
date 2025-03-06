@@ -133,11 +133,10 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			flowExecution.NodeResults[taskStep.NodeID] = taskStepData
 			// 收到节点状态更新
 		case state := <-fp.taskResultChan:
+			log.Printf("收到 taskResult: %v", state.Payload)
 			// 提取关键状态参数信息
 			var nodeStatus schema.NodeStatus
 			err := protocol.UnMarshalPayload(state.Payload, &nodeStatus)
-			log.Printf("[%s]收到executionFlowID %s nodeId %s taskresult: %s", utils.GetCallerInfo(),
-				state.FlowExecutionID, state.NodeID, nodeStatus)
 			if err != nil {
 				log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), err)
 				return
@@ -198,7 +197,7 @@ func (fp *FlowProcessor) executeNode(node schema.Node, server *Server) {
 		log.Printf(" [%s]未找到FlowExecution: %s,停止执行", utils.GetCallerInfo(), fp.FlowID)
 		return
 	}
-
+	log.Println(flowExecution)
 	if CheckDependency(fp.flowData, node, flowExecution) {
 		log.Println("依赖节点执行成功")
 	} else {

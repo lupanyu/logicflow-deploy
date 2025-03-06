@@ -4,6 +4,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 	"log"
+	"logicflow-deploy/internal/utils"
 )
 
 var jwtKey = []byte("your_secret_key")
@@ -24,7 +25,7 @@ func doAuthentication(conn *websocket.Conn) string {
 	// 读取客户端发送的 JWT
 	var tokenStr string
 	if err := conn.ReadJSON(&tokenStr); err != nil {
-		log.Printf(" [%s]读取 JWT 失败: %v", err)
+		log.Printf(" [%s]读取 JWT 失败: %v", utils.GetCallerInfo(), err)
 		return ""
 	}
 
@@ -35,7 +36,7 @@ func doAuthentication(conn *websocket.Conn) string {
 	})
 
 	if err != nil {
-		log.Printf(" [%s]解析 JWT 失败: %v", err)
+		log.Printf(" [%s]解析 JWT 失败: %v", utils.GetCallerInfo(), err)
 		return ""
 	}
 

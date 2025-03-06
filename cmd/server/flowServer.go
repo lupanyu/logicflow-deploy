@@ -6,6 +6,7 @@ import (
 	"logicflow-deploy/internal/routes"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/server"
+	"logicflow-deploy/internal/utils"
 )
 
 func HandleFlowSave(c *gin.Context) {
@@ -28,7 +29,7 @@ func HandleFlowSave(c *gin.Context) {
 }
 
 func main() {
-
+	utils.InitLog()
 	s := server.NewServer()
 	r := gin.Default()
 	routes.RegisterAPIRoutes(r, s)

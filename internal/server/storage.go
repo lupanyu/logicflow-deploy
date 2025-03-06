@@ -7,6 +7,7 @@ import (
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
 	"os"
+	"sync"
 )
 
 type Storage interface {
@@ -17,6 +18,8 @@ type Storage interface {
 // MemoryStorage 结构体用于内存存储
 type MemoryStorage struct {
 	executions map[string]schema.FlowExecution
+	// map读写锁
+	lock sync.RWMutex
 }
 
 // NewMemoryStorage 创建一个新的 MemoryStorage 实例
@@ -28,13 +31,17 @@ func NewMemoryStorage() Storage {
 
 // Save 方法用于保存流程执行状态
 func (ms *MemoryStorage) Save(execution schema.FlowExecution) {
+	ms.lock.Lock()
 	ms.executions[execution.FlowID] = execution
+	ms.lock.Unlock()
 	log.Printf(" [%s]Saved flow execution with ID: %s", utils.GetCallerInfo(), execution.FlowID)
 }
 
 // Get 方法用于获取指定 ID 的流程执行状态
 func (ms *MemoryStorage) Get(flowID string) (schema.FlowExecution, bool) {
+	ms.lock.RLock()
 	execution, exists := ms.executions[flowID]
+	ms.lock.RUnlock()
 	return execution, exists
 }
 

@@ -167,7 +167,10 @@ func handleTaskResult(s *Server, msg protocol.Message) {
 	if len(nextNodes) == 0 {
 		log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 	}
+	// 延时执行下一个节点
 	for _, nextNode := range nextNodes {
+		time.Sleep(100 * time.Millisecond)
+
 		go fp.executeNode(nextNode, s)
 	}
 }
@@ -192,12 +195,15 @@ func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 func handleTaskStepUpdate(s *Server, msg protocol.Message) {
 	// 处理Agent状态更新
 	var statusMsg schema.TaskStep
-	err := protocol.UnMarshalPayload(msg.Payload, statusMsg)
+	err := protocol.UnMarshalPayload(msg.Payload, &statusMsg)
 	if err != nil {
 		log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), err)
 		return
 	}
-
+	log.Println(msg)
 	fp := s.fpMap[msg.FlowExecutionID]
+	log.Printf("[%s] 收到executionFlowID %s nodeId %s 的任务步骤消息 taskstep: %s ", utils.GetCallerInfo(),
+		msg.FlowExecutionID, msg.NodeID, statusMsg)
+	log.Println("fp", s.fpMap)
 	fp.taskStepChan <- statusMsg
 }
