@@ -4,9 +4,11 @@ import (
 	"flag"
 	"log"
 	"logicflow-deploy/internal/agent"
+	"logicflow-deploy/internal/utils"
 )
 
 func main() {
+	utils.InitLog()
 	// 解析命令行参数
 	var serverURL string
 	flag.StringVar(&serverURL, "server", "", "LogicFlow server URL (ws:// or wss://)")
