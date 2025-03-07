@@ -12,6 +12,7 @@ const (
 	MsgRegisterResponse             // 注册响应
 	MsgJavaDeploy                   // 部署java应用  server->agent
 	MsgWebDeploy                    // 部署web应用   server->agent
+	MsgShellDeploy                  // shell脚本来部署应用 server->agent
 	MsgTask                         // 部署任务控制  server->agent
 	MsgHeartbeat                    // 心跳检测   	 server->agent  ,agent->server
 	MsgTaskStep                     // 任务详细步骤以及日志信息  agent->server

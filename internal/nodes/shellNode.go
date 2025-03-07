@@ -7,12 +7,12 @@ import (
 	"logicflow-deploy/internal/utils"
 )
 
-type JavaNodeExecutor struct {
-	properties schema.JavaProperties
+type ShellNodeExecutor struct {
+	properties schema.ShellProperties
 	agent      *protocol.AgentConnection
 }
 
-func (e *JavaNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
+func (e *ShellNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema.TaskStep, result chan protocol.Message) {
 	stat := schema.TaskStep{
 		FlowExecutionID: flowExecutionID,
 		NodeID:          nodeID,
@@ -35,16 +35,16 @@ func (e *JavaNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schem
 }
 
 // 向agent发送部署命令
-func (e *JavaNodeExecutor) deploy(flowExecutionID, nodeID string) error {
+func (e *ShellNodeExecutor) deploy(flowExecutionID, nodeID string) error {
 
-	data, _ := protocol.NewMessage(protocol.MsgJavaDeploy, flowExecutionID, e.properties.Host, nodeID, e.properties)
+	data, _ := protocol.NewMessage(protocol.MsgShellDeploy, flowExecutionID, e.properties.Host, nodeID, e.properties)
 	log.Printf("[%s] 向%s发送部署指令 参数是：%v", utils.GetCallerInfo(), e.properties.Host, data)
 
 	return e.agent.Conn.WriteJSON(data)
 }
 
-func NewJavaNodeExecutor(data schema.JavaProperties, agent *protocol.AgentConnection) *JavaNodeExecutor {
-	return &JavaNodeExecutor{
+func NewShellNodeExecutor(data schema.ShellProperties, agent *protocol.AgentConnection) *ShellNodeExecutor {
+	return &ShellNodeExecutor{
 		properties: data,
 		agent:      agent,
 	}

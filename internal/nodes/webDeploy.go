@@ -22,13 +22,14 @@ func NewWebDeployNode(agentID string, conn *websocket.Conn) *WebDeployNode {
 
 func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 	var rollbackFn []func()
+	data, _ := protocol.NewMessage(protocol.MsgTaskResult, msg.FlowExecutionID, w.agentID, msg.NodeID, schema.NodeStateSuccess)
 	defer func() {
 		if len(rollbackFn) > 0 {
 			fmt.Println("执行回滚操作...")
 			for _, fn := range rollbackFn {
 				fn()
 			}
-			data, err := protocol.NewMessage(protocol.MsgTaskResult, msg.FlowExecutionID, w.agentID, msg.NodeID, schema.NodeStateRollbacked)
+			err := data.UpdatePayload(schema.NodeStateRollbacked)
 			if err != nil {
 				fmt.Printf("[%s] 生成消息异常，错误是：%v", utils.GetCallerInfo(), err.Error())
 			}
@@ -38,7 +39,6 @@ func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 
 	// 初始化状态上报
 	status := schema.NewTaskStep(msg.FlowExecutionID, w.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
-	sendStatus(w.conn, status)
 
 	// 部署步骤集合（去掉了服务重启和健康检查）
 	steps := []struct {
@@ -64,11 +64,11 @@ func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 	}
 
 	for _, step := range steps {
-		if !handleStep(status, step.name, w.conn, step.action) {
-			return
-		}
 		if step.rollback != nil {
 			rollbackFn = append([]func(){step.rollback}, rollbackFn...)
+		}
+		if !handleStep(status, step.name, w.conn, step.action) {
+			return
 		}
 	}
 }

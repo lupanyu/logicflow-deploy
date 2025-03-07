@@ -69,7 +69,7 @@ func (n *NodeState) AppendTaskStep(taskStep TaskStep) {
 	}
 	n.Logs += fmt.Sprintf("%s %s \n", taskStep.Output, taskStep.Status)
 	if taskStep.Error != "" {
-		n.Error += taskStep.Error + "\n"
+		n.Error += taskStep.Error
 	}
 }
 

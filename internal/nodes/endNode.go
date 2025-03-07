@@ -13,14 +13,6 @@ func (e *EndNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schema
 	result <- stat
 }
 
-func (e *EndNodeExecutor) NodeType() string {
-	return "end"
-}
-
-func (e *EndNodeExecutor) AgentId() string {
-	return "end"
-}
-
 func NewEndNodeExecutor(node schema.Node) *EndNodeExecutor {
 	var data EndNodeExecutor
 	// 从node.Properties中获取属性

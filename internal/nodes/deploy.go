@@ -1,14 +1,18 @@
 package nodes
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"io"
 	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 )
 
@@ -90,4 +94,48 @@ func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn
 // 解压tar包
 func UnpackTar(tarFile, dest string) ([]byte, error) {
 	return utils.RunShell("tar -zxf " + tarFile + " -C " + dest)
+}
+
+func handleShellDeploy(step *schema.TaskStep, stepName, shell string, timeout int, conn *websocket.Conn) bool {
+	step.Setup = stepName
+	defer sendStatus(conn, step)
+	// 执行shell脚本
+	output, err := executeShellScript(shell, time.Duration(timeout)*time.Second)
+	step.Output = schema.NewOutLog(schema.LevelInfo, step.Setup, string(output))
+	if err != nil {
+		step.Status = schema.TaskStateFailed
+		step.Error = err.Error()
+		log.Printf("[%s]执行步骤[%s]失败：%v %v", utils.GetCallerInfo(), stepName, step.Status, err)
+		return false
+	}
+	return true
+}
+func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, error) {
+	// 创建临时脚本文件
+	tmpFile, err := os.CreateTemp("tmp/", "script-*.sh")
+	if err != nil {
+		return nil, fmt.Errorf("创建临时文件失败: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// 写入脚本内容
+	if _, err := io.WriteString(tmpFile, "#!/bin/sh\n"+scriptContent); err != nil {
+		return nil, fmt.Errorf("写入脚本内容失败: %v", err)
+	}
+	if err := tmpFile.Chmod(0700); err != nil {
+		return nil, fmt.Errorf("设置执行权限失败: %v", err)
+	}
+	tmpFile.Close()
+
+	// 创建带超时的上下文
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// 执行脚本并捕获输出
+	cmd := exec.CommandContext(ctx, tmpFile.Name())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return output, fmt.Errorf("脚本执行失败: %v", err)
+	}
+	return output, nil
 }

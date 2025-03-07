@@ -73,6 +73,19 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 				return nil, fmt.Errorf("web节点%v未找到AgentID: %s", data, data.Host)
 			}
 			fp.RegisterExecutor(node.ID, nodes.NewWebNodeExecuter(data, host))
+		case "shell":
+			// 反序列化properties
+			var data schema.ShellProperties
+			err := node.DeserializationProperties(&data)
+			if err != nil {
+				return nil, err
+			}
+			log.Println("反序列化shell properties", data)
+			host, ok := s.GetAgentConnection(data.Host)
+			if !ok {
+				return nil, fmt.Errorf("shell节点%v未找到AgentID: %s", data, data.Host)
+			}
+			fp.RegisterExecutor(node.ID, nodes.NewShellNodeExecutor(data, host))
 		case "end":
 			fp.RegisterExecutor(node.ID, nodes.NewEndNodeExecutor(node))
 		default:

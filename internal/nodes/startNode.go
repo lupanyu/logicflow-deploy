@@ -14,13 +14,6 @@ func (e *StartNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan sche
 	result <- stat
 }
 
-func (e *StartNodeExecutor) NodeType() string {
-	return "start"
-}
-func (e *StartNodeExecutor) AgentId() string {
-	return "start"
-}
-
 func NewStartNodeExecutor(node schema.Node) *StartNodeExecutor {
 
 	return &StartNodeExecutor{}

@@ -33,12 +33,7 @@ func (w *WebNodeExecuter) Execute(flowExecutionID, nodeID string, ch chan schema
 	}
 	ch <- stat
 }
-func (w *WebNodeExecuter) NodeType() string {
-	return "web"
-}
-func (w *WebNodeExecuter) AgentId() string {
-	return w.properties.Host
-}
+
 func NewWebNodeExecuter(data schema.WebProperties, agent *protocol.AgentConnection) *WebNodeExecuter {
 
 	return &WebNodeExecuter{
