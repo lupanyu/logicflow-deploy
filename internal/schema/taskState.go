@@ -61,7 +61,7 @@ const (
 
 func NewOutLog(level Level, step, message string) string {
 	return fmt.Sprintf("[%s] %s %s %s",
-		time.Now().UTC().Format(time.DateTime),
+		time.Now().Format(time.DateTime),
 		level,
 		step,
 		message)

@@ -8,6 +8,7 @@ import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
+	"time"
 )
 
 // FlowProcessor 是流程处理器的数据结构
@@ -143,6 +144,8 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			// 更新node节点的状态
 			nodeState := flowExecution.NodeResults[state.NodeID]
 			nodeState.Status = nodeStatus
+			now := time.Now()
+			nodeState.EndTime = &now
 			mem.Save(flowExecution)
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
@@ -165,6 +168,9 @@ func (fp *FlowProcessor) ExecuteFlow(server *Server) schema.FlowExecution {
 		return schema.FlowExecution{}
 	}
 	// 保存flowExecution
+	execution.GlobalStatus = schema.NodeStateRunning
+	now := time.Now()
+	execution.StartTime = &now
 	server.stateStorage.Save(execution)
 
 	// 启动状态工厂

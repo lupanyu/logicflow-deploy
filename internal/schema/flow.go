@@ -63,6 +63,10 @@ type NodeState struct {
 }
 
 func (n *NodeState) AppendTaskStep(taskStep TaskStep) {
+	if n.StartTime == nil {
+		now := time.Now()
+		n.StartTime = &now
+	}
 	n.Logs += fmt.Sprintf("%s %s \n", taskStep.Output, taskStep.Status)
 	if taskStep.Error != "" {
 		n.Error += taskStep.Error + "\n"
