@@ -12,7 +12,7 @@
         },
         {
             "id": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
-            "type": "application",
+            "type": "java",
             "x": 369.1818084716797,
             "y": 140.897705078125,
             "properties": {
@@ -51,7 +51,7 @@
         },
         {
             "id": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b",
-            "type": "application",
+            "type": "java",
             "x": 513.1818084716797,
             "y": 140.897705078125,
             "properties": {

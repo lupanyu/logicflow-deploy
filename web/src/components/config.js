@@ -7,7 +7,7 @@ export const nodeList = [
     },
 
      {
-      type: 'application',
+      type: 'java',
       text: '',
       icon: 'src/assets/icons/application.svg',
       },
@@ -26,6 +26,11 @@ export const nodeList = [
       type: 'end',
       text: '结束',
        icon: 'src/assets/icons/end.svg'
+    },
+    {
+      type: 'shell',
+      text: 'script',
+       icon: 'src/assets/icons/shell.svg'
     },
   ];
   

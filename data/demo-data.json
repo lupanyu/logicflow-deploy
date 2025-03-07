@@ -1,220 +1,789 @@
 {
-  "nodes": [
-      {
-          "id": "85936c62-c25c-42b9-b3a9-18e66ae2fa60",
-          "type": "start",
-          "x": 113.09091186523438,
-          "y": 140.9318084716797,
-          "properties": {
-              "width": 50,
-              "height": 50
-          }
-      },
-      {
-          "id": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
-          "type": "application",
-          "x": 369.1818084716797,
-          "y": 140.897705078125,
-          "properties": {
-              "appName": "APP",
-              "host": "test01",
-              "jarSource": "http://172.16.0.230:9527/static/rpm/test-smallheart-app-1845-smallheart-app-entrance.jar",
-              "jarPath": "/data/services/app/smallheart-app-entrance.jar",
-              "bakPath": "/data/services/bak/app/smallheart-app-entrance.jar.last",
-              "serverName": "app",
-              "port": 8080,
-              "healthUri": "/smallheart-mq-subscribe/api/mq/status",
-              "healthCheckTimeout": 180,
-              "width": 60,
-              "height": 60
-          },
-          "text": {
-              "x": 369.1818084716797,
-              "y": 140.897705078125,
-              "value": "APP_test01_app"
-          }
-      },
-      {
-          "id": "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
-          "type": "end",
-          "x": 678.1818084716797,
-          "y": 140.897705078125,
-          "properties": {
-              "width": 60,
-              "height": 60
-          },
-          "text": {
-              "x": 678.1818084716797,
-              "y": 140.897705078125,
-              "value": "结束"
-          }
-      },
-      {
-          "id": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b",
-          "type": "application",
-          "x": 513.1818084716797,
-          "y": 140.897705078125,
-          "properties": {
-              "appName": "APP",
-              "host": "test02",
-              "jarSource": "http://172.16.0.230:9527/static/rpm/test-smallheart-app-1845-smallheart-app-entrance.jar",
-              "jarPath": "/data/services/app/smallheart-app-entrance.jar",
-              "bakPath": "/data/services/bak/app/smallheart-app-entrance.jar.last",
-              "serverName": "app",
-              "port": 8080,
-              "healthUri": "/smallheart-mq-subscribe/api/mq/status",
-              "healthCheckTimeout": 180,
-              "width": 60,
-              "height": 60
-          },
-          "text": {
-              "x": 513.1818084716797,
-              "y": 140.897705078125,
-              "value": "APP_test02_app"
-          }
-      },
-      {
-          "id": "c0e593ed-e215-4045-859a-8eb1738cb1b2",
-          "type": "jenkins",
-          "x": 245,
-          "y": 140.897705078125,
-          "properties": {
-              "name": "test-smallheart-app",
-              "jobName": "job1",
-              "width": 60,
-              "height": 60
-          },
-          "text": {
-              "x": 245,
-              "y": 140.897705078125,
-              "value": "test-smallheart-app"
-          }
-      }
-  ],
-  "edges": [
-      {
-          "id": "7bb0264d-adb8-4da5-a4d7-4d7ac8a257e5",
-          "type": "myCurvedEdge",
-          "properties": {
-              "color": "default"
-          },
-          "sourceNodeId": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
-          "targetNodeId": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b",
-          "sourceAnchorId": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88_1",
-          "targetAnchorId": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b_3",
-          "startPoint": {
-              "x": 399.1818084716797,
-              "y": 140.897705078125
-          },
-          "endPoint": {
-              "x": 483.1818084716797,
-              "y": 140.897705078125
-          },
-          "pointsList": [
-              {
-                  "x": 399.1818084716797,
-                  "y": 140.897705078125
-              },
-              {
-                  "x": 483.1818084716797,
-                  "y": 140.897705078125
-              }
-          ]
-      },
-      {
-          "id": "f0f397df-24e0-413b-bbe8-6dc4125d553a",
-          "type": "myCurvedEdge",
-          "properties": {
-              "color": "default"
-          },
-          "sourceNodeId": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b",
-          "targetNodeId": "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
-          "sourceAnchorId": "2687a8a7-c2ce-4063-bab8-74bfb977ba1b_1",
-          "targetAnchorId": "b020906a-b1ec-4eef-b51f-725f50cc4c1e_3",
-          "startPoint": {
-              "x": 543.1818084716797,
-              "y": 140.897705078125
-          },
-          "endPoint": {
-              "x": 648.1818084716797,
-              "y": 140.897705078125
-          },
-          "pointsList": [
-              {
-                  "x": 543.1818084716797,
-                  "y": 140.897705078125
-              },
-              {
-                  "x": 648.1818084716797,
-                  "y": 140.897705078125
-              }
-          ]
-      },
-      {
-          "id": "01e43c7e-fadc-4f3c-8994-daff1505b7fb",
-          "type": "myCurvedEdge",
-          "properties": {
-              "color": "default"
-          },
-          "sourceNodeId": "85936c62-c25c-42b9-b3a9-18e66ae2fa60",
-          "targetNodeId": "c0e593ed-e215-4045-859a-8eb1738cb1b2",
-          "sourceAnchorId": "85936c62-c25c-42b9-b3a9-18e66ae2fa60_1",
-          "targetAnchorId": "c0e593ed-e215-4045-859a-8eb1738cb1b2_3",
-          "startPoint": {
-              "x": 138.09091186523438,
-              "y": 140.9318084716797
-          },
-          "endPoint": {
-              "x": 215,
-              "y": 140.897705078125
-          },
-          "pointsList": [
-              {
-                  "x": 138.09091186523438,
-                  "y": 140.9318084716797
-              },
-              {
-                  "x": 176.5454559326172,
-                  "y": 140.9318084716797
-              },
-              {
-                  "x": 176.5454559326172,
-                  "y": 140.897705078125
-              },
-              {
-                  "x": 215,
-                  "y": 140.897705078125
-              }
-          ]
-      },
-      {
-          "id": "e7c1b229-6e50-45b0-9e45-279cb7f56251",
-          "type": "myCurvedEdge",
-          "properties": {
-              "color": "default"
-          },
-          "sourceNodeId": "c0e593ed-e215-4045-859a-8eb1738cb1b2",
-          "targetNodeId": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
-          "sourceAnchorId": "c0e593ed-e215-4045-859a-8eb1738cb1b2_1",
-          "targetAnchorId": "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88_3",
-          "startPoint": {
-              "x": 275,
-              "y": 140.897705078125
-          },
-          "endPoint": {
-              "x": 339.1818084716797,
-              "y": 140.897705078125
-          },
-          "pointsList": [
-              {
-                  "x": 275,
-                  "y": 140.897705078125
-              },
-              {
-                  "x": 339.1818084716797,
-                  "y": 140.897705078125
-              }
-          ]
-      }
-  ]
+    "nodes":
+    [
+        {
+            "id":
+            "85936c62-c25c-42b9-b3a9-18e66ae2fa60",
+            "type":
+            "start",
+            "x":
+            113.09091186523438,
+            "y":
+            140.9318084716797,
+            "properties":
+            {
+                "width":
+                50,
+                "height":
+                50
+            }
+        },
+        {
+            "id":
+            "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
+            "type":
+            "java",
+            "x":
+            417.1818084716797,
+            "y":
+            57.897705078125,
+            "properties":
+            {
+                "appName":
+                "APP",
+                "host":
+                "test01",
+                "jarSource":
+                "http://172.16.0.230:9527/static/rpm/test-smallheart-app-1845-smallheart-app-entrance.jar",
+                "jarPath":
+                "/data/services/app/smallheart-app-entrance.jar",
+                "bakPath":
+                "/data/services/bak/app/smallheart-app-entrance.jar.last",
+                "serverName":
+                "app",
+                "port":
+                8080,
+                "healthUri":
+                "/smallheart-mq-subscribe/api/mq/status",
+                "healthCheckTimeout":
+                180,
+                "width":
+                60,
+                "height":
+                60,
+                "packageSource":
+                "/data/services/app/smallheart-app-entrance.jar",
+                "deployPath":
+                "/data/services/app/smallheart-app-entrance.jar"
+            },
+            "text":
+            {
+                "x":
+                417.1818084716797,
+                "y":
+                57.897705078125,
+                "value":
+                "APP_test01_app"
+            }
+        },
+        {
+            "id":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
+            "type":
+            "end",
+            "x":
+            760.1818084716797,
+            "y":
+            140.897705078125,
+            "properties":
+            {
+                "width":
+                60,
+                "height":
+                60
+            },
+            "text":
+            {
+                "x":
+                760.1818084716797,
+                "y":
+                140.897705078125,
+                "value":
+                "结束"
+            }
+        },
+        {
+            "id":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2",
+            "type":
+            "jenkins",
+            "x":
+            239,
+            "y":
+            140.897705078125,
+            "properties":
+            {
+                "name":
+                "构建app",
+                "jobName":
+                "job2",
+                "width":
+                60,
+                "height":
+                60
+            },
+            "text":
+            {
+                "x":
+                239,
+                "y":
+                140.897705078125,
+                "value":
+                "构建app"
+            }
+        },
+        {
+            "id":
+            "011c4d8d-28fc-4f36-99b2-a044d376d00b",
+            "type":
+            "java",
+            "x":
+            566.1818084716797,
+            "y":
+            57.897705078125,
+            "properties":
+            {
+                "appName":
+                "APP",
+                "host":
+                "test02",
+                "jarSource":
+                "http://172.16.0.230:9527/static/rpm/test-smallheart-app-1845-smallheart-app-entrance.jar",
+                "jarPath":
+                "/data/services/app/smallheart-app-entrance.jar",
+                "bakPath":
+                "/data/services/bak/app/smallheart-app-entrance.jar.last",
+                "serverName":
+                "app",
+                "port":
+                8080,
+                "healthUri":
+                "/smallheart-mq-subscribe/api/mq/status",
+                "healthCheckTimeout":
+                180,
+                "width":
+                60,
+                "height":
+                60,
+                "packageSource":
+                "/data/services/app/smallheart-app-entrance.jar",
+                "deployPath":
+                "/data/services/app/smallheart-app-entrance.jar"
+            },
+            "text":
+            {
+                "x":
+                566.1818084716797,
+                "y":
+                57.897705078125,
+                "value":
+                "APP_test02_app"
+            }
+        },
+        {
+            "id":
+            "16a5a55a-1aed-4628-82b3-ffd3439c2e64",
+            "type":
+            "jenkins",
+            "x":
+            239.02273559570312,
+            "y":
+            276.4233093261719,
+            "properties":
+            {
+                "name":
+                "构建前端spadmin",
+                "jobName":
+                "job2",
+                "width":
+                60,
+                "height":
+                60
+            },
+            "text":
+            {
+                "x":
+                239.02273559570312,
+                "y":
+                276.4233093261719,
+                "value":
+                "构建前端spadmin"
+            }
+        },
+        {
+            "id":
+            "a5f7075e-daad-46fe-a05f-53e2780fdc07",
+            "type":
+            "shell",
+            "x":
+            532.0227355957031,
+            "y":
+            276.4233093261719,
+            "properties":
+            {
+                "appName":
+                "ui-spadmin",
+                "host":
+                "test02",
+                "preScript":
+                "echo pre",
+                "deployScript":
+                "echo deploy",
+                "postScript":
+                "echo post",
+                "width":
+                60,
+                "height":
+                60
+            },
+            "text":
+            {
+                "x":
+                532.0227355957031,
+                "y":
+                276.4233093261719,
+                "value":
+                "ui-spadmin_test02"
+            }
+        },
+        {
+            "id":
+            "54da1d33-f472-49bc-9572-8dee9ea44c5e",
+            "type":
+            "shell",
+            "x":
+            501.0227355957031,
+            "y":
+            141.42330932617188,
+            "properties":
+            {
+                "appName":
+                "mcn",
+                "host":
+                "test01",
+                "preScript":
+                "echo mcn pre",
+                "deployScript":
+                "echo mcn deploy",
+                "postScript":
+                "echo mcn post",
+                "width":
+                60,
+                "height":
+                60
+            },
+            "text":
+            {
+                "x":
+                501.0227355957031,
+                "y":
+                141.42330932617188,
+                "value":
+                "mcn_test01"
+            }
+        }
+    ],
+    "edges":
+    [
+        {
+            "id":
+            "01e43c7e-fadc-4f3c-8994-daff1505b7fb",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "85936c62-c25c-42b9-b3a9-18e66ae2fa60",
+            "targetNodeId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2",
+            "sourceAnchorId":
+            "85936c62-c25c-42b9-b3a9-18e66ae2fa60_1",
+            "targetAnchorId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2_3",
+            "startPoint":
+            {
+                "x":
+                138.09091186523438,
+                "y":
+                140.9318084716797
+            },
+            "endPoint":
+            {
+                "x":
+                209,
+                "y":
+                140.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    138.09091186523438,
+                    "y":
+                    140.9318084716797
+                },
+                {
+                    "x":
+                    173.5454559326172,
+                    "y":
+                    140.9318084716797
+                },
+                {
+                    "x":
+                    173.5454559326172,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    209,
+                    "y":
+                    140.897705078125
+                }
+            ]
+        },
+        {
+            "id":
+            "fdda43eb-d1ce-4f72-9871-ac275e23e636",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
+            "targetNodeId":
+            "011c4d8d-28fc-4f36-99b2-a044d376d00b",
+            "sourceAnchorId":
+            "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88_1",
+            "targetAnchorId":
+            "011c4d8d-28fc-4f36-99b2-a044d376d00b_3",
+            "startPoint":
+            {
+                "x":
+                447.1818084716797,
+                "y":
+                57.897705078125
+            },
+            "endPoint":
+            {
+                "x":
+                536.1818084716797,
+                "y":
+                57.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    447.1818084716797,
+                    "y":
+                    57.897705078125
+                },
+                {
+                    "x":
+                    536.1818084716797,
+                    "y":
+                    57.897705078125
+                }
+            ]
+        },
+        {
+            "id":
+            "8ba18ad2-27c2-4653-8537-aeca0492243e",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2",
+            "targetNodeId":
+            "16a5a55a-1aed-4628-82b3-ffd3439c2e64",
+            "sourceAnchorId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2_2",
+            "targetAnchorId":
+            "16a5a55a-1aed-4628-82b3-ffd3439c2e64_0",
+            "startPoint":
+            {
+                "x":
+                239,
+                "y":
+                170.897705078125
+            },
+            "endPoint":
+            {
+                "x":
+                239.02273559570312,
+                "y":
+                246.42330932617188
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    239,
+                    "y":
+                    170.897705078125
+                },
+                {
+                    "x":
+                    239,
+                    "y":
+                    208.66050720214844
+                },
+                {
+                    "x":
+                    239.02273559570312,
+                    "y":
+                    208.66050720214844
+                },
+                {
+                    "x":
+                    239.02273559570312,
+                    "y":
+                    246.42330932617188
+                }
+            ]
+        },
+        {
+            "id":
+            "4873640b-fa5b-4237-b3db-95a2d2d5a007",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "16a5a55a-1aed-4628-82b3-ffd3439c2e64",
+            "targetNodeId":
+            "a5f7075e-daad-46fe-a05f-53e2780fdc07",
+            "sourceAnchorId":
+            "16a5a55a-1aed-4628-82b3-ffd3439c2e64_1",
+            "targetAnchorId":
+            "a5f7075e-daad-46fe-a05f-53e2780fdc07_3",
+            "startPoint":
+            {
+                "x":
+                269.0227355957031,
+                "y":
+                276.4233093261719
+            },
+            "endPoint":
+            {
+                "x":
+                502.0227355957031,
+                "y":
+                276.4233093261719
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    269.0227355957031,
+                    "y":
+                    276.4233093261719
+                },
+                {
+                    "x":
+                    502.0227355957031,
+                    "y":
+                    276.4233093261719
+                }
+            ]
+        },
+        {
+            "id":
+            "c8ffce6b-3b0d-4d46-add3-10db24ade09f",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "a5f7075e-daad-46fe-a05f-53e2780fdc07",
+            "targetNodeId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
+            "sourceAnchorId":
+            "a5f7075e-daad-46fe-a05f-53e2780fdc07_1",
+            "targetAnchorId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e_3",
+            "startPoint":
+            {
+                "x":
+                562.0227355957031,
+                "y":
+                276.4233093261719
+            },
+            "endPoint":
+            {
+                "x":
+                730.1818084716797,
+                "y":
+                140.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    562.0227355957031,
+                    "y":
+                    276.4233093261719
+                },
+                {
+                    "x":
+                    700.1818084716797,
+                    "y":
+                    276.4233093261719
+                },
+                {
+                    "x":
+                    700.1818084716797,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    730.1818084716797,
+                    "y":
+                    140.897705078125
+                }
+            ]
+        },
+        {
+            "id":
+            "50b5a843-c48a-4872-a37a-538bfe2cae5d",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "011c4d8d-28fc-4f36-99b2-a044d376d00b",
+            "targetNodeId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
+            "sourceAnchorId":
+            "011c4d8d-28fc-4f36-99b2-a044d376d00b_1",
+            "targetAnchorId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e_3",
+            "startPoint":
+            {
+                "x":
+                596.1818084716797,
+                "y":
+                57.897705078125
+            },
+            "endPoint":
+            {
+                "x":
+                730.1818084716797,
+                "y":
+                140.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    596.1818084716797,
+                    "y":
+                    57.897705078125
+                },
+                {
+                    "x":
+                    700.1818084716797,
+                    "y":
+                    57.897705078125
+                },
+                {
+                    "x":
+                    700.1818084716797,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    730.1818084716797,
+                    "y":
+                    140.897705078125
+                }
+            ]
+        },
+        {
+            "id":
+            "a5fff449-0ec4-4372-bfe9-2ecd60a1d8ff",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2",
+            "targetNodeId":
+            "54da1d33-f472-49bc-9572-8dee9ea44c5e",
+            "sourceAnchorId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2_1",
+            "targetAnchorId":
+            "54da1d33-f472-49bc-9572-8dee9ea44c5e_3",
+            "startPoint":
+            {
+                "x":
+                269,
+                "y":
+                140.897705078125
+            },
+            "endPoint":
+            {
+                "x":
+                471.0227355957031,
+                "y":
+                141.42330932617188
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    269,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    370.01136779785156,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    370.01136779785156,
+                    "y":
+                    141.42330932617188
+                },
+                {
+                    "x":
+                    471.0227355957031,
+                    "y":
+                    141.42330932617188
+                }
+            ]
+        },
+        {
+            "id":
+            "d37e1001-e7b7-4214-87fa-6b5ed0bf511c",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "54da1d33-f472-49bc-9572-8dee9ea44c5e",
+            "targetNodeId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e",
+            "sourceAnchorId":
+            "54da1d33-f472-49bc-9572-8dee9ea44c5e_1",
+            "targetAnchorId":
+            "b020906a-b1ec-4eef-b51f-725f50cc4c1e_3",
+            "startPoint":
+            {
+                "x":
+                531.0227355957031,
+                "y":
+                141.42330932617188
+            },
+            "endPoint":
+            {
+                "x":
+                730.1818084716797,
+                "y":
+                140.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    531.0227355957031,
+                    "y":
+                    141.42330932617188
+                },
+                {
+                    "x":
+                    630.6022720336914,
+                    "y":
+                    141.42330932617188
+                },
+                {
+                    "x":
+                    630.6022720336914,
+                    "y":
+                    140.897705078125
+                },
+                {
+                    "x":
+                    730.1818084716797,
+                    "y":
+                    140.897705078125
+                }
+            ]
+        },
+        {
+            "id":
+            "c9ec8e43-066d-40a1-9d75-8c179e6ac415",
+            "type":
+            "myCurvedEdge",
+            "properties":
+            {
+                "color":
+                "default"
+            },
+            "sourceNodeId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2",
+            "targetNodeId":
+            "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88",
+            "sourceAnchorId":
+            "c0e593ed-e215-4045-859a-8eb1738cb1b2_0",
+            "targetAnchorId":
+            "dfdcf2a6-17cc-4936-a8ac-eb0aef023f88_3",
+            "startPoint":
+            {
+                "x":
+                239,
+                "y":
+                110.897705078125
+            },
+            "endPoint":
+            {
+                "x":
+                387.1818084716797,
+                "y":
+                57.897705078125
+            },
+            "pointsList":
+            [
+                {
+                    "x":
+                    239,
+                    "y":
+                    110.897705078125
+                },
+                {
+                    "x":
+                    239,
+                    "y":
+                    57.897705078125
+                },
+                {
+                    "x":
+                    387.1818084716797,
+                    "y":
+                    57.897705078125
+                }
+            ]
+        }
+    ]
 }

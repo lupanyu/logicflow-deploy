@@ -65,7 +65,7 @@
   import { nodeList } from './config' // 预置的节点
   import { ref, onMounted, nextTick  } from 'vue'
   
-  import {    registerStart,registerEnd, registerApplication,registerWeb,registerJenkins  } from '../LFComponents/nodes/'
+  import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
   import demoData from  './demo-data.json'  
   import { ElMessage } from 'element-plus'
   import edges from '../LFComponents/edges/index.js'
@@ -168,8 +168,9 @@ function initLf () {
     registerStart(lf.value)
      registerEnd(lf.value)
     registerWeb(lf.value)
-    registerApplication(lf.value)
+    registerJava(lf.value)
     registerJenkins(lf.value)
+    registerShell(lf.value)
     // 注册节点到拖拽面板里
     lf.value.extension.dndPanel.setPatternItems(formattedNodeList)
     render()
