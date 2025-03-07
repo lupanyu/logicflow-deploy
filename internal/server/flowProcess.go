@@ -127,8 +127,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			log.Printf("收到 taskstep: %v", taskStep)
 			// 把每一步的日志更新到 flowExecution 中
 			taskStepData := flowExecution.NodeResults[taskStep.NodeID]
-			taskStepData.Logs += string(taskStep.Status) + taskStep.Output
-			taskStepData.Error = taskStep.Error
+			taskStepData.AppendTaskStep(taskStep)
 			flowExecution.NodeResults[taskStep.NodeID] = taskStepData
 			// 收到节点状态更新
 		case state := <-fp.taskResultChan:

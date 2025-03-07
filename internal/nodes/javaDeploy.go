@@ -53,12 +53,12 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 		{
 			"停止服务",
 			func() ([]byte, error) { return StopService(task.ServerName) },
-			nil,
+			func() { StartService(task.ServerName) },
 		},
 		{
 			"备份旧版本",
 			func() ([]byte, error) { return BakOld(task.DeployPath, task.BakPath) },
-			func() { StartService(task.ServerName) },
+			nil,
 		},
 		{
 			"下载最新代码包",

@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -59,6 +60,13 @@ type NodeState struct {
 	EndTime   *time.Time `json:"endTime"`
 	Logs      string     `json:"logs"`  // 执行日志
 	Error     string     `json:"error"` // 错误信息
+}
+
+func (n *NodeState) AppendTaskStep(taskStep TaskStep) {
+	n.Logs += fmt.Sprintf("%s %s \n", taskStep.Output, taskStep.Status)
+	if taskStep.Error != "" {
+		n.Error += taskStep.Error + "\n"
+	}
 }
 
 // FlowExecution 表示整个flow流程，包含所有节点的执行结果
