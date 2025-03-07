@@ -42,7 +42,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 	//
 	// 初始化状态上报
 	status := schema.NewTaskStep(msg.FlowExecutionID, j.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
-	sendStatus(j.conn, *status)
+	sendStatus(j.conn, status)
 
 	// 部署步骤集合
 	steps := []struct {

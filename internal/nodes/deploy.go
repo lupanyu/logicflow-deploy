@@ -36,7 +36,7 @@ func Rollback(backup, new, service string) ([]byte, error) {
 
 func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri string, timeout time.Duration) ([]byte, error) {
 	status.Setup = "健康检查"
-	defer sendStatus(conn, *status)
+	defer sendStatus(conn, status)
 	client := http.Client{Timeout: 3 * time.Second}
 	endTime := time.Now().Add(timeout)
 
@@ -44,7 +44,7 @@ func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri
 		resp, err := client.Get(fmt.Sprintf("http://localhost:%d%s", port, uri))
 		if err == nil && resp.StatusCode == 200 {
 			status.Status = schema.TaskStateSuccess
-			return nil, nil
+			return []byte("健康检查成功，响应码200"), nil
 		}
 		time.Sleep(5 * time.Second)
 	}
@@ -53,20 +53,20 @@ func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri
 	return nil, errors.New("健康检查超时")
 }
 
-func sendStatus(conn *websocket.Conn, status schema.TaskStep) {
+func sendStatus(conn *websocket.Conn, status *schema.TaskStep) {
 	event, err := protocol.NewMessage(protocol.MsgTaskStep, status.FlowExecutionID, status.AgentID,
 		status.NodeID, status)
 	if err != nil {
 		log.Printf("[%s]发送状态失败：%v", utils.GetCallerInfo(), err)
 		return
 	}
-	log.Printf("[%s]发送部署任务的状态，FlowID：%s,nodeID：%s,status:%s", utils.GetCallerInfo(), event.FlowExecutionID, event.NodeID, status)
+	log.Printf("[%s]发送部署任务的状态，FlowID：%s,nodeID：%s,status:%s", utils.GetCallerInfo(), event.FlowExecutionID, event.NodeID, status.Status)
 	_ = conn.WriteJSON(event)
 }
 
 func sendLastResult(conn *websocket.Conn, data protocol.Message) {
 	data.Timestamp = time.Now().UnixNano()
-	log.Printf("[%s]发送部署任务的最后结果：%v", utils.GetCallerInfo(), data)
+	log.Printf("[%s]发送部署任务的最后结果：%v", utils.GetCallerInfo(), data.Payload)
 	_ = conn.WriteJSON(data)
 }
 
@@ -74,14 +74,14 @@ func sendLastResult(conn *websocket.Conn, data protocol.Message) {
 func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn func() ([]byte, error)) bool {
 	step.Setup = stepName
 	// 统一处理结果发送
-	defer sendStatus(conn, *step)
+	defer sendStatus(conn, step)
 
 	out, err := fn()
 	step.Output = string(out)
 	if err != nil {
 		step.Status = schema.TaskStateFailed
 		step.Error = err.Error()
-		log.Printf("[%s]执行步骤[%s]失败：%v", utils.GetCallerInfo(), stepName, err)
+		log.Printf("[%s]执行步骤[%s]失败：%v %v", utils.GetCallerInfo(), stepName, step.Status, err)
 		return false
 	}
 	return true

@@ -38,7 +38,7 @@ func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 
 	// 初始化状态上报
 	status := schema.NewTaskStep(msg.FlowExecutionID, w.agentID, msg.NodeID, "开始部署", schema.TaskStateRunning, "", "")
-	sendStatus(w.conn, *status)
+	sendStatus(w.conn, status)
 
 	// 部署步骤集合（去掉了服务重启和健康检查）
 	steps := []struct {
