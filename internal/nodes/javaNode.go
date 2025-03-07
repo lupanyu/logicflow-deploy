@@ -27,14 +27,14 @@ func (e *JavaNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan schem
 		Status:          schema.TaskStateSuccess,
 		Setup:           "发送部署指令",
 		AgentID:         e.properties.Host,
-		Output:          schema.NewOutLog(schema.LevelInfo, "开始应用部署"),
+		Output:          schema.NewOutLog(schema.LevelInfo, "发送部署指令成功", "..."),
 	}
 
 	// 执行部署命令
 	err := e.deploy(flowExecutionID, nodeID)
 	if err != nil {
 		stat.Status = schema.TaskStateFailed
-		stat.Error = schema.NewOutLog(schema.LevelError, err.Error())
+		stat.Error = schema.NewOutLog(schema.LevelError, "发送部署指令", err.Error())
 		log.Printf("[%s] 向%s发送部署指令异常， 错误是: %v", utils.GetCallerInfo(), e.properties.Host, err.Error())
 	} else {
 		log.Printf("[%s] 向%s发送部署指令成功", utils.GetCallerInfo(), e.properties.Host)

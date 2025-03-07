@@ -59,9 +59,10 @@ const (
 	LevelError Level = "ERROR"
 )
 
-func NewOutLog(level Level, message string) string {
-	return fmt.Sprintf("[%s] %s %s",
+func NewOutLog(level Level, step, message string) string {
+	return fmt.Sprintf("[%s] %s %s %s",
 		time.Now().UTC().Format(time.DateTime),
 		level,
+		step,
 		message)
 }

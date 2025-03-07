@@ -77,7 +77,7 @@ func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn
 	defer sendStatus(conn, step)
 
 	out, err := fn()
-	step.Output = string(out)
+	step.Output = schema.NewOutLog(schema.LevelInfo, step.Setup, string(out))
 	if err != nil {
 		step.Status = schema.TaskStateFailed
 		step.Error = err.Error()

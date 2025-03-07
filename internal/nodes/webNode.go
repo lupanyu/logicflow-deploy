@@ -17,16 +17,16 @@ func (w *WebNodeExecuter) Execute(flowExecutionID, nodeID string, ch chan schema
 		FlowExecutionID: flowExecutionID,
 		NodeID:          nodeID,
 		Status:          schema.TaskStateSuccess,
-		Setup:           "发送部署指令",
+		Setup:           "发送web部署指令",
 		AgentID:         w.properties.Host,
-		Output:          schema.NewOutLog(schema.LevelInfo, "开始应用部署"),
+		Output:          schema.NewOutLog(schema.LevelInfo, "发送web部署指令", "..."),
 	}
 
 	// 执行部署命令
 	err := w.deploy()
 	if err != nil {
 		stat.Status = schema.TaskStateFailed
-		stat.Error = schema.NewOutLog(schema.LevelError, err.Error())
+		stat.Error = schema.NewOutLog(schema.LevelError, "发送web部署指令", err.Error())
 		log.Printf("[%s] 向%s发送部署指令异常，参数是：%v， 错误是: %v", utils.GetCallerInfo(), w.properties.Host, w.properties, err.Error())
 	} else {
 		log.Printf("[%s] 向%s发送部署指令成功，参数是：%v", utils.GetCallerInfo(), w.properties.Host, w.properties)

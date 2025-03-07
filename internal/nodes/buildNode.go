@@ -26,7 +26,7 @@ func (b *BuildNodeExecutor) Execute(flowExecutionID, nodeID string, ch chan sche
 		Status:          schema.TaskStateSuccess,
 		NodeID:          nodeID,
 		Setup:           "开始构建",
-		Output:          schema.NewOutLog(schema.LevelInfo, "开始构建"),
+		Output:          schema.NewOutLog(schema.LevelInfo, "开始构建", "..."),
 	}
 }
 func (b *BuildNodeExecutor) NodeType() string {
