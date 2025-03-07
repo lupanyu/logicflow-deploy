@@ -60,7 +60,7 @@ func sendStatus(conn *websocket.Conn, status schema.TaskStep) {
 		log.Printf("[%s]发送状态失败：%v", utils.GetCallerInfo(), err)
 		return
 	}
-	log.Printf("[%s]发送部署任务的状态：%v", utils.GetCallerInfo(), event)
+	log.Printf("[%s]发送部署任务的状态，FlowID：%s,nodeID：%s,status:%s", utils.GetCallerInfo(), event.FlowExecutionID, event.NodeID, status)
 	_ = conn.WriteJSON(event)
 }
 
@@ -78,7 +78,6 @@ func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn
 
 	out, err := fn()
 	step.Output = string(out)
-
 	if err != nil {
 		step.Status = schema.TaskStateFailed
 		step.Error = err.Error()
