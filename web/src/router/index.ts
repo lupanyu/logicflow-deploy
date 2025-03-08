@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LF from '@/components/LF.vue'
+import ExecutionDetail from '@/components/ExecutionDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,6 +14,14 @@ const router = createRouter({
       // which is lazy-loaded when the route is visited.
       component: LF,
     },
+    {
+      path: '/status/:id',
+      name: 'status',
+      component: ExecutionDetail,
+      meta: {
+        title: '执行详情',
+      }
+    }
   ],
 })
 

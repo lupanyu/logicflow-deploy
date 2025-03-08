@@ -156,23 +156,23 @@ func handleTaskResult(s *Server, msg protocol.Message) {
 
 	fp.taskResultChan <- msg
 
-	// 触发后面的节点
-	flowExecution, ok := s.stateStorage.Get(msg.FlowExecutionID)
-	if !ok {
-		log.Printf(" [%s]flowExecutionID : %s", msg.FlowExecutionID)
-		return
-	}
-	nodeID := msg.NodeID
-	nextNodes := NextNodes(flowExecution.FlowData, nodeID)
-	if len(nextNodes) == 0 {
-		log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
-	}
-	// 延时执行下一个节点
-	for _, nextNode := range nextNodes {
-		time.Sleep(100 * time.Millisecond)
-
-		go fp.executeNode(nextNode, s)
-	}
+	//// 触发后面的节点
+	//flowExecution, ok := s.stateStorage.Get(msg.FlowExecutionID)
+	//if !ok {
+	//	log.Printf(" [%s]flowExecutionID : %s", msg.FlowExecutionID)
+	//	return
+	//}
+	//nodeID := msg.NodeID
+	//nextNodes := NextNodes(flowExecution.FlowData, nodeID)
+	//if len(nextNodes) == 0 {
+	//	log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
+	//}
+	//// 延时执行下一个节点
+	//for _, nextNode := range nextNodes {
+	//	time.Sleep(100 * time.Millisecond)
+	//
+	//	go fp.executeNode(nextNode, s)
+	//}
 }
 
 func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {

@@ -1,0 +1,16 @@
+{
+  "connections": [
+    {
+      "name": "prod_jenkins",
+      "url": "https://jenkins.prod.com",
+      "username": "deployer",
+      "password": "xxxxxx"
+    },
+    {
+      "name": "test_jenkins",
+      "url": "http://jenkins.xiaoxinxin.com:8443",
+      "username": "xiaomo",
+      "password": "HV7jh4nmSlzYSO3TFNct"
+    }
+  ]
+}

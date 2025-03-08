@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"logicflow-deploy/internal/middleware"
 	"logicflow-deploy/internal/routes"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/server"
@@ -32,6 +33,8 @@ func main() {
 	utils.InitLog()
 	s := server.NewServer()
 	r := gin.Default()
+	r.Use(middleware.LogResponseBody())
+	r.Use(middleware.CorsMiddleware())
 	routes.RegisterAPIRoutes(r, s)
 	s.SetHttp(r)
 	s.Start("0.0.0.0", 8080)

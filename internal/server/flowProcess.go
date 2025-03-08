@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"log"
+	"logicflow-deploy/internal/config"
 	"logicflow-deploy/internal/nodes"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
@@ -18,18 +20,33 @@ type FlowProcessor struct {
 	executors      map[string]nodes.NodeExecutor
 	taskStepChan   chan schema.TaskStep  // 把节点里的每个步骤的状态发送到这里
 	taskResultChan chan protocol.Message // 把每个node节点最终的状态发送到这里 payload是NodeStatus
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
-//
+func (fp *FlowProcessor) Cancel() {
+	log.Printf(" [%s]终止执行flow: %s", utils.GetCallerInfo(), fp.FlowID)
+	// 终止所有的executor,TODO
+	// 终止所有的taskStepChan
+	close(fp.taskStepChan)
+	// 更新最终状态为终止 这个在外层做 TODO
+	// 终止所有的taskResultChan
+	close(fp.taskResultChan)
+
+	fp.cancel()
+}
 
 // 初始化处理器
 func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	fp := &FlowProcessor{
 		FlowID:         generateFlowID(),
 		flowData:       flow,
 		executors:      make(map[string]nodes.NodeExecutor),
 		taskStepChan:   make(chan schema.TaskStep),
 		taskResultChan: make(chan protocol.Message),
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 	log.Printf("[%s] 初始化流程处理器: %v", utils.GetCallerInfo(), fp)
 	for _, node := range flow.Nodes {
@@ -73,6 +90,19 @@ func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
 				return nil, fmt.Errorf("web节点%v未找到AgentID: %s", data, data.Host)
 			}
 			fp.RegisterExecutor(node.ID, nodes.NewWebNodeExecuter(data, host))
+		case "jenkins":
+			// 反序列化properties
+			var data schema.JenkinsProperties
+			err := node.DeserializationProperties(&data)
+			if err != nil {
+				return nil, err
+			}
+			log.Println("反序列化jenkins properties", data)
+			host, ok := config.JenkinsConnections[data.NodeName]
+			if !ok {
+				return nil, fmt.Errorf("jenkins节点%v未找到AgentID: %s", data, data.NodeName)
+			}
+			fp.RegisterExecutor(node.ID, nodes.NewJenkinsNodeExecutor(data, host))
 		case "shell":
 			// 反序列化properties
 			var data schema.ShellProperties
@@ -143,6 +173,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			taskStepData := flowExecution.NodeResults[taskStep.NodeID]
 			taskStepData.AppendTaskStep(taskStep)
 			flowExecution.NodeResults[taskStep.NodeID] = taskStepData
+			mem.Save(flowExecution)
 			// 收到节点状态更新
 		case state := <-fp.taskResultChan:
 			log.Printf("收到 taskResult: %v", state.Payload)
@@ -153,24 +184,43 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 				log.Printf(" [%s]反序列化状态消息失败: %v", utils.GetCallerInfo(), err)
 				return
 			}
-			log.Printf(" [%s]反序列化状态消息成功: %v", utils.GetCallerInfo(), nodeStatus)
+			log.Printf(" [%s]状态工厂收到node节点%s 最后状态是: %v", utils.GetCallerInfo(), state.NodeID, nodeStatus)
 			// 更新node节点的状态
 			nodeState := flowExecution.NodeResults[state.NodeID]
 			nodeState.Status = nodeStatus
 			now := time.Now()
 			nodeState.EndTime = &now
-			mem.Save(flowExecution)
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
-			if flowExecution.NodeResults[state.NodeID].Type == "start" {
+			mem.Save(flowExecution)
+			if nodeStatus == schema.NodeStateFailed {
+				flowExecution.GlobalStatus = schema.NodeStateFailed
+				flowExecution.EndTime = &now
+				log.Printf(" [%s]flow: %s 执行失败,结束", utils.GetCallerInfo(), flowExecution.FlowID)
+				mem.Save(flowExecution)
+				break
+			}
+			// 如果当前节点是结果是成功的，触发下一个节点的执行
+			if nodeStatus == schema.NodeStateSuccess {
 				nextNodes := NextNodes(flowExecution.FlowData, state.NodeID)
+				if len(nextNodes) == 0 {
+					log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
+					flowExecution.GlobalStatus = schema.NodeStateSuccess
+					flowExecution.EndTime = &now
+					mem.Save(flowExecution)
+					break
+				}
+				log.Printf(" [%s]节点%s执行成功，下一个节点是: %v", utils.GetCallerInfo(), state.NodeID, nextNodes)
 				for _, nextNode := range nextNodes {
+					log.Printf(" [%s]自动执行下一节点: %v", utils.GetCallerInfo(), nextNode)
 					go fp.executeNode(nextNode, s)
 				}
+			} else {
+				log.Printf(" [%s]节点%s执行失败，停止执行flowID:%s", utils.GetCallerInfo(), state.NodeID, state.FlowExecutionID)
+				break
 			}
 
 		}
-		mem.Save(flowExecution)
 	}
 }
 
