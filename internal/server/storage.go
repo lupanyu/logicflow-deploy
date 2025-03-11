@@ -13,6 +13,7 @@ import (
 type Storage interface {
 	Save(execution schema.FlowExecution)
 	Get(flowID string) (schema.FlowExecution, bool)
+	GetAll() []schema.FlowExecution
 }
 
 // MemoryStorage 结构体用于内存存储
@@ -20,6 +21,17 @@ type MemoryStorage struct {
 	executions map[string]schema.FlowExecution
 	// map读写锁
 	lock sync.RWMutex
+}
+
+// GetAll 方法用于获取所有的流程执行状态
+func (ms *MemoryStorage) GetAll() []schema.FlowExecution {
+	ms.lock.RLock()
+	defer ms.lock.RUnlock()
+	var executions []schema.FlowExecution
+	for _, execution := range ms.executions {
+		executions = append(executions, execution)
+	}
+	return executions
 }
 
 // NewMemoryStorage 创建一个新的 MemoryStorage 实例

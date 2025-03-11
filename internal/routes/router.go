@@ -17,6 +17,17 @@ func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
 		deployGroup.GET("/:id", func(context *gin.Context) {
 			api.GetStatus(context, s)
 		}) // 获取部署的状态
+		deployGroup.GET("/", func(context *gin.Context) {
+			api.GetDeployHistoryList(context, s)
+		})
+	}
+	flowGroup := r.Group("/api/v1/flow")
+	{
+		flowGroup.POST("/:name", api.CreateFlowData)
+		flowGroup.GET("/:name", api.GetFlow)
+		flowGroup.PUT("/:name", api.UpdateFlow)
+		flowGroup.DELETE("/:name", api.DeleteFlow)
+		flowGroup.GET("/", api.ListFlow)
 	}
 
 	r.GET("/ws", func(c *gin.Context) { services.HandleFlowExecution(s, c) })

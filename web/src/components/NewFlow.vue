@@ -1,27 +1,16 @@
 <template>
     <div class="logic-flow-view">
-       <!-- 辅助工具栏 -->
+      <h3 class="d-title">创建部署流程</h3>
+      <!-- 辅助工具栏 -->
       <Control
         class="demo-control"
         v-if="lf"
         :lf="lf"
         @catData="catData"
       ></Control>
-      <!-- 添加切换颜色的按钮 -->
-      <!-- <button @click="changeEdgeColor" :disabled="!selectedEdge">切换连线颜色</button> -->
-
+ 
       <div id="LF-view" ref="container"></div>
-      <!-- 用户节点自定义操作面板 -->
-      <!-- <AddPanel
-        v-if="showAddPanel"
-        class="add-panel"
-        :style="addPanelStyle"
-        :lf="lf"
-        :nodeData="addClickNode"
-        @addNodeFinish="hideAddPanel"
-        >
-      </AddPanel> -->
-      <!-- 属性面板 -->
+
       <div>
       <el-drawer
         title="设置节点属性"
@@ -63,22 +52,13 @@
   import DataDialog from '@/LFComponents/DataDialog.vue' // 数据弹框
   import { nodeList } from './config' // 预置的节点
   import { ref, onMounted, nextTick  } from 'vue'
-  import {useRoute} from 'vue-router'
+  
   import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
-  // import demoData from  './demo-data.json'  
   import { ElMessage } from 'element-plus'
   import edges from '../LFComponents/edges/index.js'
 
-const props = defineProps({
-  flowName: {
-    type: String,
-    required: true
-  }
-})
-
-const route = useRoute()
 // const name = 'LF'
- // 新增：存储当前选中的连线
+// 新增：存储当前选中的连线
 const selectedEdge = ref(null)
 // 新增：颜色映射
 const colorMap = {
@@ -103,35 +83,17 @@ const dialogVisible = ref(false)
 const graphData = ref(null)
 const dataVisible = ref(false)
 const moveData = ref({})
-const flowData = ref({})
-const loading = ref(false)
 
-// 新增：顺序切换连线颜色的方法
-function changeEdgeColor() {
-  console.log(selectedEdge.value)
-  if (selectedEdge.value) {
-    console.log(selectedEdge.value)
-
-    const currentColor = selectedEdge.value.properties.color || 'default'
-    const currentIndex = colorKeys.indexOf(currentColor)
-    const nextIndex = (currentIndex + 1) % colorKeys.length 
-    const nextColor = colorKeys[nextIndex]
-    updateEdgeStatus(selectedEdge.value.id, nextColor)
  
-    console.log("changeEdgeColor",selectedEdge.value.id,nextColor)
-  } 
 
-}
-
-async function initLf () {
-  await getFlowData()
+function initLf () {
       // 画布配置
       LogicFlow.use(DndPanel);
       // LogicFlow.use(SelectionSelect);
 
       lf.value = new LogicFlow({
-        // width: 1000,
-        // height: 600,
+        width: 1000,
+        height: 600,
         background: {
             backgroundColor: '#f7f9ff',
         },
@@ -162,54 +124,32 @@ async function initLf () {
   }
   // 注册节点
   function registerNode () {
-    const nodeConfig = {
-    width: 60,
-    height: 60,
-    style: {
-      background: {
-        fill: '#FFF',
-        stroke: '#DDD'
+    const formattedNodeList = nodeList.map(node => {
+      if (typeof node === 'string') {
+        return { type: node, properties: {editable: true,
+          refY:-100,
+          textStyle: {
+            textAnchor: 'middle',
+            dominantBaseline: 'middle',
+          },
+        } }; // 确保是对象格式
       }
-    }
-  };
+      return node; // 如果已经是对象，直接返回
+    });
     // 注册节点
-    registerStart(lf.value,nodeConfig)
+    registerStart(lf.value)
      registerEnd(lf.value)
     registerWeb(lf.value)
     registerJava(lf.value)
     registerJenkins(lf.value)
     registerShell(lf.value)
     // 注册节点到拖拽面板里
-    lf.value.extension.dndPanel.setPatternItems(nodeList)
+    lf.value.extension.dndPanel.setPatternItems(formattedNodeList)
     render()
   }
-  // 从后端获取数据渲染
-  async function getFlowData () {
-    // 从路由中获取流程名称
-    const flowName = props.flowName;
-    console.log('flowName',flowName)
-    try {
-      loading.value = true
-        const response = await fetch(`/api/v1/flow/${flowName}`, {
-      method: 'GET',
-       headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-      if (!response.ok) throw new Error('获取数据失败')
-      const result = await response.json()
-    console.log(result)
-      flowData.value =  result || {}
-    } catch (e) {
-      ElMessage.error(e.message)
-    } finally {
-      loading.value = false
-    }
-  }
-
   // 渲染
   function render() {
-      lf.value.render(flowData.value)
+    lf.value.render("")
      LfEvent()
   }
   // 动态更新边状态
@@ -320,10 +260,8 @@ async function initLf () {
 </script>
 <style>
   .logic-flow-view {
-    height: 100%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
+    height: 70vh;
+    position: relative;
   }
   .d-title{
     text-align: center;
@@ -364,5 +302,4 @@ async function initLf () {
       stroke-dashoffset: 0;
     }
   }
- 
   </style>  

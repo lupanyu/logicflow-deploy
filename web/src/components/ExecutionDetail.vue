@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <h3 class="d-title">{{ title }}</h3>
     <div id="lf-container" ref="container"></div>
     
     <!-- 日志弹窗 -->
@@ -18,10 +19,19 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute,useRouter } from 'vue-router'
 import LogicFlow from '@logicflow/core'
+import { Menu,MiniMap,Snapshot } from '@logicflow/extension'   
+  import '@logicflow/core/lib/style/index.css'
+  import '@logicflow/extension/lib/style/index.css'
+  import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
+  // import demoData from  './demo-data.json'  
+  import { ElMessage } from 'element-plus'
+  import edges from '../LFComponents/edges/index.js' 
  
-const route = useRoute()
+const title = ref('')
+ const route = useRoute()
+const router = useRouter()
 const container = ref(null)
 const lf = ref(null)
 const logVisible = ref(false)
@@ -33,6 +43,115 @@ const cors = {
         'Content-Type': 'application/json'
       }
 }
+
+async function initLf () {
+       // 画布配置
+       // LogicFlow.use(SelectionSelect);
+
+      lf.value = new LogicFlow({
+        width: 1000,
+        height: 600,
+        background: {
+            backgroundColor: '#f7f9ff',
+        },
+        grid: {
+          size: 10,
+          visible: true
+        },
+        keyboard: {
+          enabled: true
+        },
+        usePassiveEvent: true,// 被动事件
+        edgeTextDraggable: true,
+        hoverOutline: false,
+        isSilentMode: true, // 禁用所有交互
+        stopScrollGraph: true, // 禁止画布滚动
+        stopZoomGraph: true,  // 禁止缩放
+        adjustNodePosition: false, // 禁止节点拖拽
+        disabledPlugins: ['control'], // 禁用控制点件
+ 
+          container: container.value,
+      })
+   
+      lf.value.register(edges)
+      lf.value.setDefaultEdgeType('myCurvedEdge')
+      // 添加节点点击事件监听
+lf.value.on('node:click', ({ data }) => {
+  selectedNode.value = {
+    ...executionData.value.nodeResults[data.id],
+    id: data.id
+  }
+  logVisible.value = true
+})
+      initEvent()
+      // 注册节点
+      registerNode()
+
+  }
+  // 注册节点
+  function registerNode () {
+    const nodeConfig = {
+      width: 60,
+      height: 60,
+      style: {
+        background: {
+          fill: '#FFF',
+          stroke: '#DDD'
+        }
+      }
+    };
+    // 注册节点
+    registerStart(lf.value,nodeConfig)
+     registerEnd(lf.value,nodeConfig)
+    registerWeb(lf.value,nodeConfig)
+    registerJava(lf.value,nodeConfig)
+    registerJenkins(lf.value,nodeConfig)
+    registerShell(lf.value,nodeConfig)
+    // 注册节点到拖拽面板里
+    //lf.value.extension.dndPanel.setPatternItems(nodeList)
+    //render()
+  }
+// 在fetchExecutionData之后添加以下方法
+function updateEdgeStatus() {
+  const statusColors = {
+    pending: '#CCCCCC',
+    running: '#E6A23C',
+    success: '#67C23A',
+    failed: '#F56C6C',
+    skipped: '#909399',
+    error: '#F56C6C',
+    timeout: '#F56C6C',
+    rollbacked: '#F56C6C'
+  }
+
+  executionData.value.flowData?.edges?.forEach(edge => {
+    const sourceNode = executionData.value.nodeResults[edge.sourceNodeId]
+    if (sourceNode?.status) {
+      edge.properties = {
+        ...edge.properties,
+        style: {
+          stroke: statusColors[sourceNode.status],
+          strokeWidth: 2
+        },
+        text: {
+          content: sourceNode.status.toUpperCase(),
+          style: {
+            fill: statusColors[sourceNode.status],
+            fontSize: 12
+          }
+        }
+      }
+    }
+  })
+}
+
+ 
+   // 事件监听
+   function initEvent () {
+    lf.value.on('blank:click', () => {
+    logVisible.value = false
+  })
+  } 
 // 获取执行记录
 async function fetchExecutionData() {
   try {
@@ -41,8 +160,20 @@ async function fetchExecutionData() {
     console.log(url)
     const response = await fetch(url,cors)
     console.log(response)
+    if (response.status === 404) {
+      ElMessage.warning('请求的执行记录不存在...')
+      // 跳转到首页
+
+      setTimeout(() => {router.push('/')}, 2000)
+      return
+    }
+    if (!response.ok) {
+      ElMessage.error('Oops, this is a error message.')
+    }
     executionData.value = await response.json()
     console.log(executionData.value)
+    title.value = "部署ID:" + executionData.value.flowId + "  当前状态:" + executionData.value.status
+     updateEdgeStatus() // 新增调用
 
     renderFlow()
   } catch (e) {
@@ -62,8 +193,17 @@ function renderFlow() {
     }
   })) || []
 
-  const edges = executionData.value.flowData?.edges || []
-  if (!lf.value) {
+  const edges = executionData.value.flowData?.edges?.map(edge => ({
+    ...edge,
+    type: 'myCurvedEdge',
+    text: edge.properties?.text,
+    properties: {
+      ...edge.properties,
+      // 强制应用样式
+      style: edge.properties?.style 
+    }
+  })) || []
+    if (!lf.value) {
     lf.value = new LogicFlow({
       container: container.value,
       grid: true,
@@ -90,20 +230,30 @@ function renderFlow() {
   
   lf.value.render({
     nodes,
-    edges: executionData.value.flowData?.edges || []
-  })
+    edges: executionData.value.flowData?.edges?.map(edge => ({
+      ...edge,
+      type: 'myCurvedEdge', // 确保使用自定义边类型
+      text: edge.properties?.text // 传递状态文本
+    })) || []
+})
 }
 
 // 轮询更新数据
 let timer = null
 onMounted(() => {
+  initLf()
   fetchExecutionData()
-  timer = setInterval(fetchExecutionData, 5000) // 5秒刷新
+  timer = setInterval(()=> {
+    if (executionData.value.status === 'running') {
+      fetchExecutionData()
+    }
+      },5000)
 })
 
 onBeforeUnmount(() => {
   clearInterval(timer)
 })
+
 </script>
 
 <style scoped>

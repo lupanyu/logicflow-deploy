@@ -13,3 +13,7 @@ func (s *Server) GetFlowExecution(flowID string) (schema.FlowExecution, bool) {
 	}
 	return execution, true
 }
+
+func (s *Server) GetAllFlowExecution() []schema.FlowExecution {
+	return s.stateStorage.GetAll()
+}
