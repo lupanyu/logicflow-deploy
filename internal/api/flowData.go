@@ -143,6 +143,19 @@ func readFlowFile(path string) (map[string]interface{}, error) {
 	return content, err
 }
 
+// readFlowDataFromFile 从文件中读取Flow数据
+func readFlowDataFromFile(filename string) (schema.Template, error) {
+	var flowData schema.Template
+	filePath := filepath.Join(flowDataPath, filename)
+	file, err := os.Open(filePath)
+	if err != nil {
+		return schema.Template{}, err
+	}
+	defer file.Close()
+	err = json.NewDecoder(file).Decode(&flowData)
+	return flowData, err
+}
+
 // 辅助函数：写入文件
 func writeFlowFile(path string, content interface{}) error {
 	// 确保目录存在

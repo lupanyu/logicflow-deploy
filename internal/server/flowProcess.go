@@ -16,7 +16,7 @@ import (
 // FlowProcessor 是流程处理器的数据结构
 type FlowProcessor struct {
 	FlowID         string
-	flowData       schema.FlowData
+	flowData       schema.Template
 	executors      map[string]nodes.NodeExecutor
 	taskStepChan   chan schema.TaskStep  // 把节点里的每个步骤的状态发送到这里
 	taskResultChan chan protocol.Message // 把每个node节点最终的状态发送到这里 payload是NodeStatus
@@ -37,7 +37,7 @@ func (fp *FlowProcessor) Cancel() {
 }
 
 // 初始化处理器
-func NewFlowProcessor(flow schema.FlowData, s *Server) (*FlowProcessor, error) {
+func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	fp := &FlowProcessor{
 		FlowID:         generateFlowID(),

@@ -10,28 +10,28 @@
           </div>
           <nav class="flex space-x-4">
             <button 
-              @click="activeTab = 'home'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
+            @click="switchTab('home')" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'home' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <HomeIcon class="h-4 w-4 inline mr-1" />
               Home
             </button>
             <button 
-              @click="activeTab = 'templates'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
+            @click="switchTab('templates')" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'templates' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <LayoutTemplateIcon class="h-4 w-4 inline mr-1" />
               Templates
             </button>
             <button 
-              @click="activeTab = 'history'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
+            @click="switchTab('history')" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'history' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <HistoryIcon class="h-4 w-4 inline mr-1" />
               History
             </button>
             <button 
-              @click="activeTab = 'working'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
+            @click="switchTab('working')" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'working' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <GitBranchIcon class="h-4 w-4 inline mr-1" />
@@ -41,7 +41,7 @@
         </div>
       </div>
     </header>
-
+  
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-6">
       <!-- New Flow Template Creation -->
@@ -58,7 +58,7 @@
             </div>
             <div class="flex space-x-3">
               <button 
-                @click="handleNewFlowSave"
+                @click="saveNewTemplate"
                 class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                 <CheckCircleIcon class="h-4 w-4 mr-1" />
                 Save Template
@@ -100,12 +100,19 @@
           
           <!-- LogicFlow Canvas for Template Creation with Save Button -->
           <div class="border rounded-lg relative" style="height: 500px;">
+            <div class="absolute top-4 right-4 z-10">
+              <button 
+                @click="getGraphDataAndSave" 
+                class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center shadow-md">
+                <CheckCircleIcon class="h-4 w-4 mr-1" />
+                Save
+              </button>
+            </div>
             <NewFlow ref="newFlowRef" @save="handleNewFlowSave" />
- 
           </div>
         </div>
       </div>
-
+  
       <!-- Template Details with LogicFlow Canvas -->
       <div v-else-if="selectedTemplate" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
@@ -118,12 +125,13 @@
               </button>
               <h2 class="text-2xl font-bold text-gray-800">{{ selectedTemplate.name }}</h2>
             </div>
-            <div class="flex space-x-3" >
+            <div class="flex space-x-3">
               <button 
-                @click="startDeployment(selectedTemplate)" 
-                class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                @click="executeDeployment(selectedTemplate)" 
+                class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+                :disabled="isDeploying">
                 <RocketIcon class="h-4 w-4 mr-1" />
-                Deploy
+                {{ isDeploying ? 'Deploying...' : 'Deploy' }}
               </button>
               <button 
                 @click="handleUpdateTemplate()" 
@@ -136,6 +144,12 @@
         </div>
         <div class="p-6">
           <div class="mb-4">
+            <span :class="['text-xs px-2 py-1 rounded-full', 
+              selectedTemplate.type === 'Frontend' ? 'bg-blue-100 text-blue-800' : 
+              selectedTemplate.type === 'Backend' ? 'bg-green-100 text-green-800' : 
+              'bg-purple-100 text-purple-800']">
+              {{ selectedTemplate.type }}
+            </span>
             <p class="mt-4 text-gray-700">{{ selectedTemplate.description }}</p>
           </div>
           
@@ -145,7 +159,7 @@
           </div>
         </div>
       </div>
-
+  
       <!-- Deployment Details with ExecutionDetail -->
       <div v-else-if="selectedDeployment" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
@@ -161,9 +175,11 @@
             <div class="flex space-x-3">
               <button 
                 v-if="selectedDeployment.status !== 'In Progress'"
-                class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                @click="redeployFromHistory(selectedDeployment)"
+                class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+                :disabled="isDeploying">
                 <RocketIcon class="h-4 w-4 mr-1" />
-                Redeploy
+                {{ isDeploying ? 'Redeploying...' : 'Redeploy' }}
               </button>
             </div>
           </div>
@@ -183,7 +199,8 @@
               <p class="text-sm text-gray-500">Started At</p>
               <p class="font-medium">{{ selectedDeployment.startTime || selectedDeployment.deployedAt }}</p>
             </div>
-            <div v-if="selectedDeployment.type">
+
+            <div v-if="selectedDeployment.environment">
               <p class="text-sm text-gray-500">Env</p>
               <p class="font-medium">{{ selectedDeployment.env }}</p>
             </div>
@@ -198,10 +215,10 @@
           </div>
           
           <!-- ExecutionDetail Component for Deployment -->
-          <ExecutionDetail :flow="selectedDeployment" />
+          <ExecutionDetail :flowId="selectedDeployment.flowId" />
         </div>
       </div>
-
+  
       <!-- Home View -->
       <div v-else-if="activeTab === 'home'" class="bg-white rounded-lg shadow p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Welcome to Deployment Portal</h2>
@@ -211,7 +228,7 @@
             <h3 class="text-lg font-semibold mb-2">Templates</h3>
             <p class="text-gray-600">Browse and select from saved deployment templates.</p>
             <button 
-              @click="activeTab = 'templates'" 
+            @click="switchTab('templates')" 
               class="mt-4 text-blue-600 hover:text-blue-800 font-medium flex items-center">
               View Templates
               <ArrowRightIcon class="h-4 w-4 ml-1" />
@@ -222,7 +239,7 @@
             <h3 class="text-lg font-semibold mb-2">History</h3>
             <p class="text-gray-600">View your past deployments and their status.</p>
             <button 
-              @click="activeTab = 'history'" 
+            @click="switchTab('history')" 
               class="mt-4 text-green-600 hover:text-green-800 font-medium flex items-center">
               View History
               <ArrowRightIcon class="h-4 w-4 ml-1" />
@@ -233,7 +250,7 @@
             <h3 class="text-lg font-semibold mb-2">Working</h3>
             <p class="text-gray-600">View the current deployment in working</p>
             <button 
-              @click="activeTab = 'working'" 
+            @click="switchTab('working')" 
               class="mt-4 text-purple-600 hover:text-purple-800 font-medium flex items-center">
               View Working
               <ArrowRightIcon class="h-4 w-4 ml-1" />
@@ -241,7 +258,7 @@
           </div>
         </div>
       </div>
-
+  
       <!-- Working View -->
       <div v-else-if="activeTab === 'working'" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
@@ -280,7 +297,7 @@
           </div>
         </div>
       </div>
-
+  
       <!-- Templates View -->
       <div v-else-if="activeTab === 'templates'" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
@@ -296,8 +313,8 @@
             </div>
           </div>
         </div>
-        <div class="p-6"> 
-           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div 
               v-for="template in templates" 
               :key="template.id" 
@@ -312,8 +329,9 @@
                 <span class="text-sm text-gray-500">Last updated: {{ template.updatedAt }}</span>
                 <div class="flex space-x-2">
                   <button 
-                    @click.stop="startDeployment(template)" 
-                    class="text-green-600 hover:text-green-800 flex items-center">
+                    @click.stop="executeDeployment(template.name)" 
+                    class="text-green-600 hover:text-green-800 flex items-center"
+                    :disabled="isDeploying">
                     <RocketIcon class="h-4 w-4 mr-1" />
                     Deploy
                   </button>
@@ -326,7 +344,7 @@
           </div>
         </div>
       </div>
-
+  
       <!-- History View -->
       <div v-else-if="activeTab === 'history'" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
@@ -338,11 +356,11 @@
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开始时间</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">结束时间</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">总共用时</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -352,8 +370,9 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span :class="['px-2 py-1 text-xs rounded-full', 
-                      deployment.status === 'Success' ? 'bg-green-100 text-green-800' : 
-                      deployment.status === 'Failed' ? 'bg-red-100 text-red-800' : 
+                      deployment.status === 'success' ? 'bg-green-100 text-green-800' : 
+                      deployment.status === 'failed' ? 'bg-red-100 text-red-800' : 
+                      deployment.status === 'running' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-yellow-100 text-yellow-800']">
                       {{ deployment.status }}
                     </span>
@@ -380,65 +399,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Template Modal (previously Deployment Modal) -->
-      <div v-if="showDeploymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full">
-          <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-xl font-bold">New Template</h3>
-            <button @click="showDeploymentModal = false" class="text-gray-500 hover:text-gray-700">
-              <XIcon class="h-5 w-5" />
-            </button>
-          </div>
-          <div class="p-6">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
-              <input 
-                v-model="newTemplateData.name" 
-                type="text" 
-                placeholder="Enter template name" 
-                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-              />
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Template Env</label>
-              <select 
-                v-model="newTemplateData.env" 
-                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
-                <option value="Frontend">Frontend</option>
-                <option value="Backend">Backend</option>
-                <option value="Fullstack">Fullstack</option>
-              </select>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea 
-                v-model="newTemplateData.description" 
-                placeholder="Enter template description" 
-                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                rows="3"
-              ></textarea>
-            </div>
-            
-            <div class="flex justify-end space-x-3 mt-6">
-              <button 
-                @click="showDeploymentModal = false" 
-                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button 
-                @click="openNewTemplateFlow" 
-                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
-                <PlusIcon class="h-4 w-4 mr-1" />
-                Create Template
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+  
       <!-- Deployment Status Toast -->
       <div 
         v-if="deploymentToast.show" 
@@ -476,51 +437,49 @@
       </div>
     </main>
   </div>
-</template>
+  </template>
+  
+  <script setup>
+  import { ref, onMounted } from 'vue';
+  import { 
+    ServerIcon, 
+    HomeIcon, 
+    LayoutTemplateIcon, 
+    HistoryIcon, 
+    ArrowRightIcon, 
+    PlusIcon, 
+    ExternalLinkIcon,
+    XIcon,
+    RocketIcon,
+    CheckCircleIcon,
+    AlertCircleIcon,
+    InfoIcon,
+    GitBranchIcon,
+    ArrowLeftIcon,
+  } from 'lucide-vue-next';
+  
+  // Import your existing LogicFlow components
+  import ExecutionDetail from './components/ExecutionDetail.vue';
+  import LF from './components/LF.vue';
+  import NewFlow from './components/NewFlow.vue';
 
-<script setup>
-import { ref, markRaw, onMounted } from 'vue';
-import { 
-  ServerIcon, 
-  HomeIcon, 
-  LayoutTemplateIcon, 
-  HistoryIcon, 
-  ArrowRightIcon, 
-  PlusIcon, 
-  ExternalLinkIcon,
-  XIcon,
-  RocketIcon,
-  CheckCircleIcon,
-  AlertCircleIcon,
-  InfoIcon,
-  GitBranchIcon,
-  ArrowLeftIcon,
-  EditIcon
-} from 'lucide-vue-next';
-
-// Import your existing LogicFlow components
-import ExecutionDetail from './components/ExecutionDetail.vue';
-import LF from './components/LF.vue';
-import NewFlow from './components/NewFlow.vue';
-import { ElMessage } from 'element-plus';
-
-// View states
-const activeTab = ref('home');
-const selectedTemplate = ref(null);
-const selectedDeployment = ref(null);
-const selectedPipeline = ref(null);
-const showNewFlow = ref(false);
-const newFlowRef = ref(null);
-const LFRef = ref(null);
-// New template data
-const newTemplateData = ref({
-  name: '',
+  
+  // View states
+  const activeTab = ref('home');
+  const selectedTemplate = ref(null);
+  const selectedDeployment = ref(null);
+  const showNewFlow = ref(false);
+  const newFlowRef = ref(null);
+  const LFRef = ref(null);
+  // New template data
+  const newTemplateData = ref({
+    name: '',
   env: 'Test',
-  description: '',
+    description: '',
   nodes: null,
   edges: null
-});
-
+  });
+  
 const updateTemplateData = ref({
   name: '',
   env: '',
@@ -530,38 +489,63 @@ const updateTemplateData = ref({
 })
 
 // Deployment state
-const showDeploymentModal = ref(false);
-const isDeploying = ref(false);
-const deploymentConfig = ref({
-  templateId: null,
-  environment: 'development',
-  name: '',
-  environmentVariables: []
-});
-const deploymentToast = ref({
-  show: false,
-  type: 'info',
-  title: '',
-  message: '',
-  timeout: null
-});
-
-// Function to open new template flow
-const openNewTemplateFlow = () => {
-  showDeploymentModal.value = false;
-  activeTab.value = 'templates';
-  showNewFlow.value = true;
-};
-
-// Function to handle new flow save from NewFlow component
+ const isDeploying = ref(false);
+ 
+  const deploymentToast = ref({
+    show: false,
+    type: 'info',
+    title: '',
+    message: '',
+    timeout: null
+  });
+  
+  // Function to open new template flow
+  const openNewTemplateFlow = () => {
+    activeTab.value = 'templates';
+    showNewFlow.value = true;
+  };
+  
+  // Function to get graph data from NewFlow component and save it
+  const getGraphDataAndSave = () => {
+    if (!newFlowRef.value) {
+      showToast('error', 'Error', 'Cannot access flow editor');
+      return;
+    }
+  
+    // Access the graphData from the NewFlow component
+    if (newFlowRef.value.graphData && newFlowRef.value.graphData.value) {
+      // Store the graph data in our template data
+      newTemplateData.value.flowData = newFlowRef.value.graphData.value;
+      // Call save function
+      saveNewTemplate();
+    } else {
+      // Trigger the catData method in the NewFlow component to get the data
+      if (typeof newFlowRef.value.catData === 'function') {
+        newFlowRef.value.catData();
+        // Wait a moment for the data to be processed
+        setTimeout(() => {
+          if (newFlowRef.value.graphData && newFlowRef.value.graphData.value) {
+            newTemplateData.value.flowData = newFlowRef.value.graphData.value;
+            saveNewTemplate();
+          } else {
+            showToast('error', 'Error', 'Failed to get flow data');
+          }
+        }, 100);
+      } else {
+        showToast('error', 'Error', 'Cannot access flow data method');
+      }
+    }
+  };
+  
+  // Function to handle new flow save from NewFlow component
 const handleNewFlowSave = () => {
   const flowData   = newFlowRef.value.GetGraphData();
   newTemplateData.value.nodes = flowData.nodes;
   newTemplateData.value.edges = flowData.edges;
   console.log('newTemplateData.value',newTemplateData.value)
-   saveNewTemplate();
-};
-
+    saveNewTemplate();
+  };
+  
 const handleUpdateTemplate = () =>{
   const flowData   = LFRef.value.LFGetGraphData();
   console.log(flowData)
@@ -579,17 +563,23 @@ const updateTemplate = async () => {
   try {
     const response = await fetch("/api/v1/flow/"+updateTemplateData.value.name, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+        headers: {
+          'Content-Type': 'application/json'
+        },
     body: JSON.stringify( updateTemplateData.value)}
   )
     console.log(response)
-    if (!response.ok) {
-      ElMessage.error('Oops, this is a error message.')
-    }
-    ElMessage.info(
-      '保存成功'
+      if (!response.ok) {
+        showToast(
+          'error',
+          'Update Failed',
+          'Update template failed:'+response.statusText+response.body
+        )
+     }
+    showToast(
+      'success',
+      'Update Success',
+      'Update template success'
     )
    } catch (e) {
     console.log('保存template失败:', e)
@@ -605,145 +595,129 @@ const saveNewTemplate = async () => {
 
   try {
     const response = await fetch("/api/v1/flow/", {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
     body: JSON.stringify( newTemplateData.value)}
   )
     console.log(response)
     if (!response.ok) {
-      ElMessage.error('Oops, this is a error message.')
-    }
-    ElMessage.info(
-      '保存成功'
+      showToast(
+        'error',
+        'Save Failed',
+        'Save template failed:'+response.statusText+response.body
+      )
+      return;
+     }
+    showToast(
+     'success',
+      'Save Success',
+      'Save template success'
     )
    } catch (e) {
     console.log('保存template失败:', e)
   }
 };
 
-   
 
-// Functions for deployment TODO
-const startDeployment = (template) => {
-  showDeploymentModal.value = true;
-  deploymentConfig.value.templateId = template.id;
-  deploymentConfig.value.name = `${template.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}`;
-  // 提示部署成功/失败 TODO
-
-};
-
-// Function to start deployment from pipeline
-const startDeploymentFromPipeline = (pipeline) => {
-  // Find a matching template based on pipeline type or use default
-  const matchingTemplate = templates.value.find(t => 
-    (pipeline.category === 'CI/CD' && t.type === 'Frontend') || 
-    (pipeline.category === 'Data' && t.type === 'Backend') ||
-    t.type === 'Fullstack'
-  ) || templates.value[0];
-  
-  startDeployment(matchingTemplate);
-};
-
-const addEnvironmentVariable = () => {
-  deploymentConfig.value.environmentVariables.push({
-    key: '',
-    value: ''
-  });
-};
-
-const removeEnvironmentVariable = (index) => {
-  deploymentConfig.value.environmentVariables.splice(index, 1);
-};
-
-const executeDeployment = async () => {
+const executeDeployment = async (template) => {
   isDeploying.value = true;
-  
+  console.log ("template",template)
   try {
-    // Mock API call to backend service
-    // In a real application, replace this with an actual API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Find the template being used
-    const selectedTemplate = templates.value.find(t => t.id === deploymentConfig.value.templateId);
-    
-    // Show success toast
-    showToast('success', 'Deployment Started', `${selectedTemplate.name} is now being deployed to ${deploymentConfig.value.environment}.`);
-    
-    // Reset and close modal
-    resetDeploymentForm();
-    showDeploymentModal.value = false;
-    
-    // Switch to history tab to show the deployment progress
-    activeTab.value = 'history';
-    
-  } catch (error) {
-    // Show error toast
-    showToast('error', 'Deployment Failed', 'There was an error starting the deployment. Please try again.');
-    console.error('Deployment error:', error);
-  } finally {
-    isDeploying.value = false;
-  }
-};
+     let url = '/api/v1/deploy/'
+     let args = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        templateName: template.name,
+        env: template.env,
+        description: template.description,
+        nodes: template.nodes,
+        edges: template.edges
+      })
+     } 
+     if (typeof template ==='string'){
+      url = '/api/v1/deploy/'+template
+      args.body = JSON.stringify({ })
+     };
+     console.log("template type",typeof template)
+     console.log("url",url)
+     console.log("args",args)
 
-const resetDeploymentForm = () => {
-  deploymentConfig.value = {
-    templateId: null,
-    environment: 'development',
-    name: '',
-    environmentVariables: []
+     const response =  await fetch(url,args);
+     console.log("response",response)
+     const data = await response.json()
+     if (!response.ok) {
+      showToast('error', 'Deployment Failed', data.error || 'There was an error starting the deployment. Please try again.');
+      return;
+     }
+      // Show success toast
+      showToast('success', 'Deployment Started', selectedTemplate.name||template + ' is now being deployed ...');
+      switchTab('history');
+      // Switch to history tab to show the deployment progress
+      activeTab.value = 'history';
+      
+      // Refresh deployment history
+      await fetchDeployHistory();
+      
+    } catch (error) {
+      // Show error toast
+      showToast('error', 'Redeployment Failed', error.message || 'There was an error starting the redeployment. Please try again.');
+      console.error('Redeployment error:', error);
+    } finally {
+      // Close loading indicator
+      // loading.close();
+      isDeploying.value = false;
+    }
   };
-};
 
-const showToast = (type, title, message) => {
-  // Clear any existing timeout
-  if (deploymentToast.value.timeout) {
-    clearTimeout(deploymentToast.value.timeout);
-  }
   
-  // Set toast data
-  deploymentToast.value = {
-    show: true,
-    type,
-    title,
-    message,
-    timeout: setTimeout(() => {
-      deploymentToast.value.show = false;
-    }, 5000) // Hide after 5 seconds
-  };
-};
-
-// Function to open pipeline
-const openPipeline = (pipeline) => {
-  selectedPipeline.value = pipeline;
-};
-
-// Functions to view details
-const viewTemplateDetails = (template) => {
-  selectedTemplate.value = template;
-};
-
-const viewDeploymentDetails = (deployment) => {
-  selectedDeployment.value = deployment;
-};
-
-// Function to view working details
-const viewWorkingDetails = (pipeline) => {
-  // Create a deployment-like object from the pipeline for ExecutionDetail
-  const workingDeployment = {
-    flowId: pipeline.id,
-    name: pipeline.name,
-    status: 'In Progress',
-    startTime: pipeline.updatedAt,
-    description: pipeline.description,
-    // Add any other properties needed by ExecutionDetail
+  const showToast = (type, title, message) => {
+    // Clear any existing timeout
+    if (deploymentToast.value.timeout) {
+      clearTimeout(deploymentToast.value.timeout);
+    }
+  
+    // Set toast data
+    deploymentToast.value = {
+      show: true,
+      type,
+      title,
+      message,
+      timeout: setTimeout(() => {
+        deploymentToast.value.show = false;
+      }, 5000) // Hide after 5 seconds
+    };
   };
   
-  selectedDeployment.value = workingDeployment;
-};
-
-const templates = ref([]);
+  // Functions to view details
+  const viewTemplateDetails = (template) => {
+    selectedTemplate.value = template;
+  };
+  
+  const viewDeploymentDetails = (deployment) => {
+    selectedDeployment.value = deployment;
+  };
+  
+  // Function to view working details
+  const viewWorkingDetails = (pipeline) => {
+    // Create a deployment-like object from the pipeline for ExecutionDetail
+    const workingDeployment = {
+      flowId: pipeline.id,
+      name: pipeline.name,
+      status: 'In Progress',
+      startTime: pipeline.updatedAt,
+      description: pipeline.description,
+      // Add any other properties needed by ExecutionDetail
+    };
+  
+    selectedDeployment.value = workingDeployment;
+  };
+  
+  const templates = ref([]);
 
 const updateDeployment = () => {
   try {
@@ -756,126 +730,159 @@ const updateDeployment = () => {
   )
     console.log(response)
     if (!response.ok) {
-      ElMessage.error('Oops, this is a error message.')
-    }
-    ElMessage.info(
-      '保存成功'
-    )
+      showToast(
+        'error',
+        'Update Failed',
+        'Update template failed:'+response.statusText+response.body
+      )
+      return
+     }
+    showToast(
+      'success',
+        'Update Success',
+        'Update template success'
+      )
    } catch (e) {
     console.log('保存template失败:', e)
   }
 }
-
-// Function to fetch flows
-async function fetchFlows() {
-  try {
-    const response = await fetch('/api/v1/flow', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!response.ok) throw new Error('获取数据失败');
-    const result = await response.json();
-    console.log(result);
-    templates.value = result.data || [];
-  } catch (e) {
-    ElMessage.error(e.message);
-  } 
-}
-
-// Mock data for pipelines
-const pipelines = ref([
-  {
-    id: 1,
-    name: 'Frontend Deployment',
-    description: 'CI/CD pipeline for React applications',
-    category: 'CI/CD',
-    updatedAt: '2023-10-20'
-  },
-  {
-    id: 2,
-    name: 'Data Processing',
-    description: 'ETL pipeline for data transformation',
-    category: 'Data',
-    updatedAt: '2023-10-18'
-  },
-  {
-    id: 3,
-    name: 'Microservice Deployment',
-    description: 'Deployment pipeline for microservices',
-    category: 'CI/CD',
-    updatedAt: '2023-10-15'
-  },
-  {
-    id: 4,
-    name: 'Database Migration',
-    description: 'Pipeline for database schema migrations',
-    category: 'Data',
-    updatedAt: '2023-10-12'
-  },
-  {
-    id: 5,
-    name: 'Serverless Deployment',
-    description: 'Pipeline for serverless function deployment',
-    category: 'Serverless',
-    updatedAt: '2023-10-05'
-  }
-]);
-
-const deployHistory = ref([]);
-
-// Function to fetch deployments
-const fetchDeployHistory = async () => {
-  try {
-    const response = await fetch('/api/v1/deploy', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!response.ok) throw new Error('获取数据失败');
-    const result = await response.json();
-    console.log(result);
-    deployHistory.value = result.data || [];
-  } catch (e) {
-    ElMessage.error(e.message);
-  } 
-};
   
-onMounted(() => {
-  fetchFlows();
-  fetchDeployHistory();
-});
-</script>
+  // Function to fetch flows
+  async function fetchFlows() {
+    try {
+      const response = await fetch('/api/v1/flow', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch data');
+      const result = await response.json();
+      console.log(result);
+      templates.value = result.data || [];
+    } catch (e) {
+      showToast('error', 'Error get flowlist', e.message);
+     } 
+  }
+  
+  // Mock data for pipelines
+  const pipelines = ref([
+    {
+      id: 1,
+      name: 'Frontend Deployment',
+      description: 'CI/CD pipeline for React applications',
+      category: 'CI/CD',
+      updatedAt: '2023-10-20'
+    },
+    {
+      id: 2,
+      name: 'Data Processing',
+      description: 'ETL pipeline for data transformation',
+      category: 'Data',
+      updatedAt: '2023-10-18'
+    },
+    {
+      id: 3,
+      name: 'Microservice Deployment',
+      description: 'Deployment pipeline for microservices',
+      category: 'CI/CD',
+      updatedAt: '2023-10-15'
+    },
+    {
+      id: 4,
+      name: 'Database Migration',
+      description: 'Pipeline for database schema migrations',
+      category: 'Data',
+      updatedAt: '2023-10-12'
+    },
+    {
+      id: 5,
+      name: 'Serverless Deployment',
+      description: 'Pipeline for serverless function deployment',
+      category: 'Serverless',
+      updatedAt: '2023-10-05'
+    }
+  ]);
+  
+  const deployHistory = ref([]);
+  
+  // Function to fetch deployments
+  const fetchDeployHistory = async () => {
+    try {
+      const response = await fetch('/api/v1/deploy', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch data');
+      const result = await response.json();
+      console.log(result);
+      deployHistory.value = result || [];
+    } catch (e) {
+      showToast('error', 'Error get deploy history', e.message);
+     } 
+  };
+  // Function to switch tabs and fetch relevant data
+const switchTab = async (tab) => {
+  activeTab.value = tab;
+  selectedTemplate.value = null;
+  selectedDeployment.value = null;
+  showNewFlow.value = false;
 
-<style>
-:root {
-  --color-primary: #4f46e5;
-  --color-primary-dark: #4338ca;
-}
+  // Fetch data based on the selected tab
+  if (tab === 'templates') {
+    await fetchFlows();
+  } else if (tab === 'history') {
+    await fetchDeployHistory();
+  } else if (tab === 'working') {
+    await fetchWorkingPipelines();
+  }
+};
 
-.bg-primary {
-  background-color: var(--color-primary);
-}
+// Function to fetch working pipelines
+const fetchWorkingPipelines = async () => {
+  try {
+    
+    console.log('Fetching working pipelines');
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 300));
+  } catch (e) {
+    showToast('error', 'Error fetching working pipelines', e.message);
+   }
+};
+  onMounted(() => {
 
-.bg-primary-dark {
-  background-color: var(--color-primary-dark);
-}
-
-.text-primary {
-  color: var(--color-primary);
-}
-
-.text-primary-dark {
-  color: var(--color-primary-dark);
-}
-
-.hover\:bg-primary-dark:hover {
-  background-color: var(--color-primary-dark);
-}
-
-.hover\:text-primary-dark:hover {
-  color: var(--color-primary-dark);
-}
-</style>
+  });
+  </script>
+  
+  <style>
+  :root {
+    --color-primary: #4f46e5;
+    --color-primary-dark: #4338ca;
+  }
+  
+  .bg-primary {
+    background-color: var(--color-primary);
+  }
+  
+  .bg-primary-dark {
+    background-color: var(--color-primary-dark);
+  }
+  
+  .text-primary {
+    color: var(--color-primary);
+  }
+  
+  .text-primary-dark {
+    color: var(--color-primary-dark);
+  }
+  
+  .hover\:bg-primary-dark:hover {
+    background-color: var(--color-primary-dark);
+  }
+  
+  .hover\:text-primary-dark:hover {
+    color: var(--color-primary-dark);
+  }
+  </style>

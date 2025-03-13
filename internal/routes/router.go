@@ -11,7 +11,10 @@ func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
 	// 部署相关路由组
 	deployGroup := r.Group("/api/v1/deploy")
 	{
-		deployGroup.POST("", func(context *gin.Context) {
+		deployGroup.POST("/", func(context *gin.Context) {
+			api.StartDeploy(context, s)
+		}) // 开始部署
+		deployGroup.POST("/:name", func(context *gin.Context) {
 			api.StartDeploy(context, s)
 		}) // 开始部署
 		deployGroup.GET("/:id", func(context *gin.Context) {

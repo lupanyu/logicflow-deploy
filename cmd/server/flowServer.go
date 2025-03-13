@@ -11,7 +11,7 @@ import (
 )
 
 func HandleFlowSave(c *gin.Context) {
-	var flowData schema.FlowData
+	var flowData schema.Template
 	if err := c.ShouldBindJSON(&flowData); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return

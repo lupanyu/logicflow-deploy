@@ -14,11 +14,6 @@ type Template struct {
 	Edges       []Edge `json:"edges"`
 }
 
-type FlowData struct {
-	Nodes []Node `json:"nodes"`
-	Edges []Edge `json:"edges"`
-}
-
 type Node struct {
 	ID         string          `json:"id"`
 	Type       string          `json:"type"`
@@ -89,7 +84,7 @@ type FlowExecution struct {
 	EndTime      *carbon.Carbon       `json:"endTime"`     // 改为指针类型，可空
 	Duration     float64              `json:"duration"`    // 新增执行耗时（秒）
 	NodeResults  map[string]NodeState `json:"nodeResults"` // key 是 node 的 id，value 是 node 的执行结果
-	FlowData     FlowData             `json:"flowData"`    // 原始数据
+	FlowData     Template             `json:"flowData"`    // 原始数据
 }
 
 // 持续时间计算方法

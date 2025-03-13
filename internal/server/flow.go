@@ -25,23 +25,23 @@ func SaveFlowModel(data []byte) error {
 	return os.WriteFile(filename, data, 0644)
 }
 
-func LoadFlowModel(filename string) (schema.FlowData, error) {
+func LoadFlowModel(filename string) (schema.Template, error) {
 	// 获取目录下的所有文件
 	files, err := os.OpenFile(FlowModelDir+filename, os.O_RDONLY, 0644)
 	if err != nil {
-		return schema.FlowData{}, err
+		return schema.Template{}, err
 	}
 	defer files.Close()
-	var data schema.FlowData
+	var data schema.Template
 	jsonParser := json.NewDecoder(files)
 	if err := jsonParser.Decode(&data); err != nil {
-		return schema.FlowData{}, err
+		return schema.Template{}, err
 	}
 	return data, nil
 }
 
 // 找到当前节点起，下一批能执行的节点
-func NextNodes(flowData schema.FlowData, currentNodeId string) []schema.Node {
+func NextNodes(flowData schema.Template, currentNodeId string) []schema.Node {
 	result := []schema.Node{}
 	// 遍历所有边，找到当前节点的下一个节点
 	for _, edges := range flowData.Edges {
@@ -52,7 +52,7 @@ func NextNodes(flowData schema.FlowData, currentNodeId string) []schema.Node {
 	return result
 }
 
-func getNodeById(flowData schema.FlowData, nodeId string) schema.Node {
+func getNodeById(flowData schema.Template, nodeId string) schema.Node {
 	for _, node := range flowData.Nodes {
 		if node.ID == nodeId {
 			return node
@@ -61,7 +61,7 @@ func getNodeById(flowData schema.FlowData, nodeId string) schema.Node {
 	return schema.Node{}
 }
 
-func getStartNode(flowData schema.FlowData) schema.Node {
+func getStartNode(flowData schema.Template) schema.Node {
 	for _, node := range flowData.Nodes {
 		if node.Type == "start" {
 			return node
@@ -70,7 +70,7 @@ func getStartNode(flowData schema.FlowData) schema.Node {
 	return schema.Node{}
 }
 
-func CheckDependency(flowData schema.FlowData, currentNode schema.Node, f schema.FlowExecution) bool {
+func CheckDependency(flowData schema.Template, currentNode schema.Node, f schema.FlowExecution) bool {
 	// 遍历所有边，找到当前节点的上一个节点
 	dependency := []schema.Node{}
 	for _, edges := range flowData.Edges {

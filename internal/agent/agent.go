@@ -69,6 +69,14 @@ func (a *DeploymentAgent) Run() {
 			}
 			node := nodes.NewJavaDeployNode(a.agentID, a.wsConn)
 			go node.Run(msg, java)
+		case protocol.MsgShellDeploy:
+			var shell schema.ShellProperties
+			if err := json.Unmarshal(msg.Payload, &shell); err != nil {
+				log.Printf(" [%s]解析Shell部署消息失败: %v", utils.GetCallerInfo(), err)
+				continue
+			}
+			node := nodes.NewShellDeployNode(a.agentID, a.wsConn)
+			go node.Run(msg, shell)
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
 		default:

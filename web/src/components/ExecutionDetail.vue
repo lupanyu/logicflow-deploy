@@ -1,7 +1,6 @@
 <template>
   <div class="container">
-    <h3 class="d-title">{{ title }}</h3>
-    <div id="lf-container" ref="container"></div>
+     <div id="lf-container" ref="container"></div>
     
     <!-- 日志弹窗 -->
     <el-dialog 
@@ -29,20 +28,27 @@ import { Menu,MiniMap,Snapshot } from '@logicflow/extension'
   import { ElMessage } from 'element-plus'
   import edges from '../LFComponents/edges/index.js' 
  
-const title = ref('')
- const route = useRoute()
+const route = useRoute()
 const router = useRouter()
 const container = ref(null)
 const lf = ref(null)
 const logVisible = ref(false)
 const selectedNode = ref(null)
 const executionData = ref({})
+const execResult = ref({})
 const cors = {
       mode: 'cors', // 明确跨域模式
       headers: {
         'Content-Type': 'application/json'
       }
 }
+
+const props = defineProps({
+  flowId: {
+    type: String,
+    required: true
+  }
+})
 
 async function initLf () {
        // 画布配置
@@ -109,7 +115,6 @@ lf.value.on('node:click', ({ data }) => {
     registerShell(lf.value,nodeConfig)
     // 注册节点到拖拽面板里
     //lf.value.extension.dndPanel.setPatternItems(nodeList)
-    //render()
   }
 // 在fetchExecutionData之后添加以下方法
 function updateEdgeStatus() {
@@ -153,10 +158,10 @@ function updateEdgeStatus() {
   })
   } 
 // 获取执行记录
-async function fetchExecutionData() {
+async function fetchExecutionData(flowId) {
   try {
     // url参数为执行记录id
-    const url = "http://localhost:8080/api/v1/deploy/"+`${route.params.id}`
+    const url = "/api/v1/deploy/"+flowId
     console.log(url)
     const response = await fetch(url,cors)
     console.log(response)
@@ -172,8 +177,7 @@ async function fetchExecutionData() {
     }
     executionData.value = await response.json()
     console.log(executionData.value)
-    title.value = "部署ID:" + executionData.value.flowId + "  当前状态:" + executionData.value.status
-     updateEdgeStatus() // 新增调用
+    updateEdgeStatus() // 新增调用
 
     renderFlow()
   } catch (e) {
@@ -242,10 +246,13 @@ function renderFlow() {
 let timer = null
 onMounted(() => {
   initLf()
-  fetchExecutionData()
+  const flowId = props.flowId
+  console.log(flowId)
+  fetchExecutionData(flowId)
+  // fetchExecutionData()
   timer = setInterval(()=> {
-    if (executionData.value.status === 'running') {
-      fetchExecutionData()
+    if (execResult.value.status === 'running') {
+      fetchExecutionData(props.execResult.flowId)
     }
       },5000)
 })
