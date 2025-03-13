@@ -189,8 +189,8 @@
             <div>
               <p class="text-sm text-gray-500">Status</p>
               <span :class="['px-2 py-1 text-xs rounded-full', 
-                selectedDeployment.status === 'Success' ? 'bg-green-100 text-green-800' : 
-                selectedDeployment.status === 'Failed' ? 'bg-red-100 text-red-800' : 
+                selectedDeployment.status === 'success' ? 'bg-green-100 text-green-800' : 
+                selectedDeployment.status === 'failed' ? 'bg-red-100 text-red-800' : 
                 'bg-yellow-100 text-yellow-800']">
                 {{ selectedDeployment.status }}
               </span>

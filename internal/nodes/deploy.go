@@ -108,6 +108,7 @@ func handleShellDeploy(step *schema.TaskStep, stepName, shell string, timeout in
 		log.Printf("[%s]执行步骤[%s]失败：%v %v", utils.GetCallerInfo(), stepName, step.Status, err)
 		return false
 	}
+	step.Status = schema.TaskStateSuccess // 设置状态为成功
 	return true
 }
 func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, error) {
@@ -125,12 +126,11 @@ func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, er
 	if err := tmpFile.Chmod(0700); err != nil {
 		return nil, fmt.Errorf("设置执行权限失败: %v", err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// 创建带超时的上下文
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
 	// 执行脚本并捕获输出
 	cmd := exec.CommandContext(ctx, tmpFile.Name())
 	output, err := cmd.CombinedOutput()
