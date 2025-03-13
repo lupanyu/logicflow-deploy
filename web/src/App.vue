@@ -185,37 +185,37 @@
           </div>
         </div>
         <div class="p-6">
-          <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="grid grid-cols-2 gap-4 mb-6" >
             <div>
               <p class="text-sm text-gray-500">Status</p>
               <span :class="['px-2 py-1 text-xs rounded-full', 
                 selectedDeployment.status === 'success' ? 'bg-green-100 text-green-800' : 
                 selectedDeployment.status === 'failed' ? 'bg-red-100 text-red-800' : 
                 'bg-yellow-100 text-yellow-800']">
-                {{ selectedDeployment.status }}
+                {{ ExecutionDetailRef.executionData?.status || selectedDeployment.status }}
               </span>
             </div>
             <div>
               <p class="text-sm text-gray-500">Started At</p>
-              <p class="font-medium">{{ selectedDeployment.startTime || selectedDeployment.deployedAt }}</p>
+              <p class="font-medium">{{ ExecutionDetailRef.executionData?.startTime  || selectedDeployment.startTime }}</p>
             </div>
 
             <div v-if="selectedDeployment.environment">
               <p class="text-sm text-gray-500">Env</p>
-              <p class="font-medium">{{ selectedDeployment.env }}</p>
+              <p class="font-medium">{{ ExecutionDetailRef.executionData?.env || selectedDeployment.env}}</p>
             </div>
             <div v-if="selectedDeployment.endTime">
               <p class="text-sm text-gray-500">Ended At</p>
-              <p class="font-medium">{{ selectedDeployment.endTime }}</p>
+              <p class="font-medium">{{ ExecutionDetailRef.executionData?.endTime || selectedDeployment.endTime}}</p>
             </div>
             <div v-if="selectedDeployment.duration">
               <p class="text-sm text-gray-500">Duration</p>
-              <p class="font-medium">{{ selectedDeployment.duration }}</p>
+              <p class="font-medium">{{ ExecutionDetailRef.executionData?.duration || selectedDeployment.duration}}</p>
             </div>
           </div>
           
           <!-- ExecutionDetail Component for Deployment -->
-          <ExecutionDetail :flowId="selectedDeployment.flowId" />
+          <ExecutionDetail :flowId="selectedDeployment.flowId" ref="ExecutionDetailRef"/>
         </div>
       </div>
   
@@ -471,6 +471,7 @@
   const showNewFlow = ref(false);
   const newFlowRef = ref(null);
   const LFRef = ref(null);
+  const ExecutionDetailRef = ref(null);
   // New template data
   const newTemplateData = ref({
     name: '',

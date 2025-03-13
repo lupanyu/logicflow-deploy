@@ -20,8 +20,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute,useRouter } from 'vue-router'
 import LogicFlow from '@logicflow/core'
-import { Menu,MiniMap,Snapshot } from '@logicflow/extension'   
-  import '@logicflow/core/lib/style/index.css'
+   import '@logicflow/core/lib/style/index.css'
   import '@logicflow/extension/lib/style/index.css'
   import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
   // import demoData from  './demo-data.json'  
@@ -43,12 +42,6 @@ const cors = {
       }
 }
 
-const props = defineProps({
-  flowId: {
-    type: String,
-    required: true
-  }
-})
 
 async function initLf () {
        // 画布配置
@@ -253,7 +246,10 @@ onMounted(() => {
   timer = setInterval(()=> {
     if (execResult.value.status === 'running') {
       fetchExecutionData(props.execResult.flowId)
-    }
+    }else{
+      // 如果不是running 就 停止轮询
+      clearInterval(timer)
+     }
       },5000)
 })
 
@@ -261,6 +257,9 @@ onBeforeUnmount(() => {
   clearInterval(timer)
 })
 
+defineExpose({
+    executionData
+    })  
 </script>
 
 <style scoped>
