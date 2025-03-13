@@ -23,7 +23,7 @@ func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
 	}
 	flowGroup := r.Group("/api/v1/flow")
 	{
-		flowGroup.POST("/:name", api.CreateFlowData)
+		flowGroup.POST("/", api.CreateFlowData)
 		flowGroup.GET("/:name", api.GetFlow)
 		flowGroup.PUT("/:name", api.UpdateFlow)
 		flowGroup.DELETE("/:name", api.DeleteFlow)

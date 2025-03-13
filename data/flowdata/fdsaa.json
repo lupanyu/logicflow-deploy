@@ -1,0 +1,23 @@
+{
+  "name": "fdsaa",
+  "description": "as",
+  "env": "Test",
+  "nodes": [
+    {
+      "id": "ece935b1-ddfb-47ad-a8eb-5f234189d869",
+      "type": "start",
+      "x": 236.10227966308594,
+      "y": 80.16195678710938,
+      "properties": {
+        "width": 60,
+        "height": 60
+      },
+      "text": {
+        "x": 236.10227966308594,
+        "y": 80.16195678710938,
+        "value": "开始"
+      }
+    }
+  ],
+  "edges": []
+}

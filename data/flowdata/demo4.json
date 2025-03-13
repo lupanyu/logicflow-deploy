@@ -1,4 +1,7 @@
 {
+  "name": "demo4",
+  "description": "afdsa",
+  "env": "Test",
   "nodes":
   [
     {

@@ -92,8 +92,7 @@ function initLf () {
       // LogicFlow.use(SelectionSelect);
 
       lf.value = new LogicFlow({
-        width: 1000,
-        height: 600,
+
         background: {
             backgroundColor: '#f7f9ff',
         },
@@ -253,6 +252,14 @@ function initLf () {
     console.log('datavisable.value',dataVisible.value)
     console.log('graphData value',graphData.value)
   }
+  function GetGraphData(){
+    const data = lf.value.getGraphData()
+    return data
+  }
+
+  defineExpose({
+    GetGraphData
+    })
   onMounted(()=> {
     initLf()
     })
@@ -260,8 +267,10 @@ function initLf () {
 </script>
 <style>
   .logic-flow-view {
-    height: 70vh;
-    position: relative;
+    height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   }
   .d-title{
     text-align: center;

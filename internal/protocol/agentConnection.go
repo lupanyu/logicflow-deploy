@@ -1,13 +1,13 @@
 package protocol
 
 import (
+	"github.com/dromara/carbon/v2"
 	"github.com/gorilla/websocket"
-	"time"
 )
 
 // 定义 AgentConnection 结构体
 type AgentConnection struct {
 	Conn       *websocket.Conn
-	LastActive time.Time
+	LastActive carbon.Carbon
 	Status     agentStatus
 }

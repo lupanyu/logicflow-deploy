@@ -317,6 +317,15 @@ async function initLf () {
     initLf()
     })
 
+  function LFGetGraphData(){
+    console.log('lf  get graph data',lf.value)
+    const data = lf.value.getGraphData()
+    return data 
+  }
+  defineExpose({
+    LFGetGraphData
+    })  
+
 </script>
 <style>
   .logic-flow-view {

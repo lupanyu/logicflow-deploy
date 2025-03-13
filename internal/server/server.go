@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/dromara/carbon/v2"
 	"github.com/gin-gonic/gin"
 	"log"
 	"logicflow-deploy/internal/protocol"
@@ -103,7 +104,7 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 	s.agentsLock.Lock()
 	agent := &protocol.AgentConnection{
 		Conn:       conn,
-		LastActive: time.Now(),
+		LastActive: carbon.Now(),
 		Status:     protocol.AgentReady,
 	}
 	s.agents[registerMsg.AgentID] = agent
@@ -184,7 +185,7 @@ func handleHealthCheck(s *Server, msg protocol.Message, conn *websocket.Conn) {
 		log.Printf(" [%s]未找到AgentID: %s", agentID)
 		return
 	}
-	agent.LastActive = time.Now()
+	agent.LastActive = carbon.Now()
 	// 发送心跳响应
 	response, _ := protocol.NewMessage(protocol.MsgHeartbeat, msg.FlowExecutionID, msg.AgentID, msg.NodeID, "pong")
 	_ = conn.WriteJSON(response)

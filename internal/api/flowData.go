@@ -2,29 +2,30 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/dromara/carbon/v2"
 	"github.com/gin-gonic/gin"
+	"log"
 	"logicflow-deploy/internal/schema"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 var (
-	fileNameRegex = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
+	fileNameRegex = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 	flowDataPath  = "data/flowdata"
 )
 
 func CreateFlowData(c *gin.Context) {
-	var data schema.FlowData
+	var data schema.Template
 	if err := c.ShouldBindJSON(&data); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request data"})
 		return
 	}
-
+	log.Println(data)
 	// 从url中获取文件名
-	name := c.Param("name")
+	name := data.Name
 
 	// 验证文件名是否符合要求
 	if !fileNameRegex.MatchString(name) {
@@ -39,14 +40,14 @@ func CreateFlowData(c *gin.Context) {
 		return
 	}
 	// 保存文件
-	if err := saveFlowDataToFile(data, filePath); err != nil {
+	if err := saveTemplateToFile(data, filePath); err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save file"})
 		return
 	}
 	c.JSON(201, gin.H{"message": "文件创建成功", "filename": name})
 }
 
-func saveFlowDataToFile(data schema.FlowData, filePath string) error {
+func saveTemplateToFile(data schema.Template, filePath string) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
@@ -80,7 +81,7 @@ func GetFlow(c *gin.Context) {
 
 // 更新Flow文件
 func UpdateFlow(c *gin.Context) {
-	filename := c.Param("filename")
+	filename := c.Param("name")
 	if !validateFilename(filename) {
 		c.JSON(400, gin.H{"error": "无效的文件名"})
 		return
@@ -169,8 +170,9 @@ func ListFlow(c *gin.Context) {
 		return
 	}
 	type FileInfo struct {
-		Name      string    `json:"name"`
-		UpdatedAt time.Time `json:"updatedAt"`
+		Name      string        `json:"name"`
+		Env       string        `json:"env"`
+		UpdatedAt carbon.Carbon `json:"updatedAt"`
 	}
 	allFiles := make([]FileInfo, 0)
 	for _, f := range files {
@@ -179,7 +181,7 @@ func ListFlow(c *gin.Context) {
 			name := fileInfo.Name()
 			allFiles = append(allFiles, FileInfo{
 				Name:      strings.Split(name, ".json")[0],
-				UpdatedAt: fileInfo.ModTime(),
+				UpdatedAt: carbon.NewCarbon(fileInfo.ModTime()),
 			})
 		}
 	}

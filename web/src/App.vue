@@ -10,28 +10,28 @@
           </div>
           <nav class="flex space-x-4">
             <button 
-              @click="activeTab = 'home'; selectedTemplate = null; selectedDeployment = null" 
+              @click="activeTab = 'home'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'home' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <HomeIcon class="h-4 w-4 inline mr-1" />
               Home
             </button>
             <button 
-              @click="activeTab = 'templates'; selectedTemplate = null; selectedDeployment = null" 
+              @click="activeTab = 'templates'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'templates' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <LayoutTemplateIcon class="h-4 w-4 inline mr-1" />
               Templates
             </button>
             <button 
-              @click="activeTab = 'history'; selectedTemplate = null; selectedDeployment = null" 
+              @click="activeTab = 'history'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'history' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <HistoryIcon class="h-4 w-4 inline mr-1" />
               History
             </button>
             <button 
-              @click="activeTab = 'working'; selectedTemplate = null; selectedDeployment = null" 
+              @click="activeTab = 'working'; selectedTemplate = null; selectedDeployment = null; showNewFlow = false" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'working' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <GitBranchIcon class="h-4 w-4 inline mr-1" />
@@ -44,8 +44,70 @@
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-6">
+      <!-- New Flow Template Creation -->
+      <div v-if="showNewFlow" class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center">
+              <button 
+                @click="showNewFlow = false" 
+                class="mr-3 text-gray-500 hover:text-gray-700">
+                <ArrowLeftIcon class="h-5 w-5" />
+              </button>
+              <h2 class="text-2xl font-bold text-gray-800">New Template</h2>
+            </div>
+            <div class="flex space-x-3">
+              <button 
+                @click="handleNewFlowSave"
+                class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                <CheckCircleIcon class="h-4 w-4 mr-1" />
+                Save Template
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="mb-6">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+              <input 
+                v-model="newTemplateData.name" 
+                type="text" 
+                placeholder="Enter template name" 
+                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Template Env</label>
+              <select 
+                v-model="newTemplateData.env" 
+                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                <option value="Test">Test</option>
+                <option value="Pre">Pre</option>
+                <option value="Prod">Prod</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea 
+                v-model="newTemplateData.description" 
+                placeholder="Enter template description" 
+                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+                rows="3"
+              ></textarea>
+            </div>
+          </div>
+          
+          <!-- LogicFlow Canvas for Template Creation with Save Button -->
+          <div class="border rounded-lg relative" style="height: 500px;">
+            <NewFlow ref="newFlowRef" @save="handleNewFlowSave" />
+ 
+          </div>
+        </div>
+      </div>
+
       <!-- Template Details with LogicFlow Canvas -->
-      <div v-if="selectedTemplate" class="bg-white rounded-lg shadow">
+      <div v-else-if="selectedTemplate" class="bg-white rounded-lg shadow">
         <div class="p-6 border-b border-gray-200">
           <div class="flex justify-between items-center">
             <div class="flex items-center">
@@ -56,30 +118,30 @@
               </button>
               <h2 class="text-2xl font-bold text-gray-800">{{ selectedTemplate.name }}</h2>
             </div>
-            <div class="flex space-x-3">
+            <div class="flex space-x-3" >
               <button 
                 @click="startDeployment(selectedTemplate)" 
                 class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                 <RocketIcon class="h-4 w-4 mr-1" />
                 Deploy
               </button>
+              <button 
+                @click="handleUpdateTemplate()" 
+                class="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                <CheckCircleIcon class="h-4 w-4 mr-1" />
+                Save Template
+              </button>
             </div>
           </div>
         </div>
         <div class="p-6">
           <div class="mb-4">
-            <span :class="['text-xs px-2 py-1 rounded-full', 
-              selectedTemplate.type === 'Frontend' ? 'bg-blue-100 text-blue-800' : 
-              selectedTemplate.type === 'Backend' ? 'bg-green-100 text-green-800' : 
-              'bg-purple-100 text-purple-800']">
-              {{ selectedTemplate.type }}
-            </span>
             <p class="mt-4 text-gray-700">{{ selectedTemplate.description }}</p>
           </div>
           
           <!-- LogicFlow Canvas for Template -->
           <div class="border rounded-lg mt-4" style="height: 500px;">
-            <LF :flow-name="selectedTemplate.name" :readonly="true" />
+            <LF :flow-name="selectedTemplate.name" :readonly="true" ref="LFRef" />
           </div>
         </div>
       </div>
@@ -122,12 +184,8 @@
               <p class="font-medium">{{ selectedDeployment.startTime || selectedDeployment.deployedAt }}</p>
             </div>
             <div v-if="selectedDeployment.type">
-              <p class="text-sm text-gray-500">Type</p>
-              <p class="font-medium">{{ selectedDeployment.type }}</p>
-            </div>
-            <div v-if="selectedDeployment.environment">
-              <p class="text-sm text-gray-500">Environment</p>
-              <p class="font-medium">{{ selectedDeployment.environment }}</p>
+              <p class="text-sm text-gray-500">Env</p>
+              <p class="font-medium">{{ selectedDeployment.env }}</p>
             </div>
             <div v-if="selectedDeployment.endTime">
               <p class="text-sm text-gray-500">Ended At</p>
@@ -230,16 +288,16 @@
             <h2 class="text-2xl font-bold text-gray-800">Templates List</h2>
             <div class="flex space-x-3">
               <button 
-                @click="showDeploymentModal = true" 
+                @click="openNewTemplateFlow()" 
                 class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
-                <RocketIcon class="h-4 w-4 mr-1" />
-                New Deployment
+                <PlusIcon class="h-4 w-4 mr-1" />
+                New Template
               </button>
             </div>
           </div>
         </div>
-        <div class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="p-6"> 
+           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div 
               v-for="template in templates" 
               :key="template.id" 
@@ -249,12 +307,6 @@
                 <div>
                   <h3 class="font-semibold text-lg">{{ template.name }}</h3>
                 </div>
-                <span :class="['text-xs px-2 py-1 rounded-full', 
-                  template.type === 'Frontend' ? 'bg-blue-100 text-blue-800' : 
-                  template.type === 'Backend' ? 'bg-green-100 text-green-800' : 
-                  'bg-purple-100 text-purple-800']">
-                  {{ template.type }}
-                </span>
               </div>
               <div class="mt-4 flex justify-between items-center">
                 <span class="text-sm text-gray-500">Last updated: {{ template.updatedAt }}</span>
@@ -329,75 +381,45 @@
         </div>
       </div>
 
-      <!-- Deployment Modal -->
+      <!-- Template Modal (previously Deployment Modal) -->
       <div v-if="showDeploymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full">
           <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-xl font-bold">New Deployment</h3>
+            <h3 class="text-xl font-bold">New Template</h3>
             <button @click="showDeploymentModal = false" class="text-gray-500 hover:text-gray-700">
               <XIcon class="h-5 w-5" />
             </button>
           </div>
           <div class="p-6">
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Select Template</label>
-              <select 
-                v-model="deploymentConfig.templateId" 
-                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
-                <option v-for="template in templates" :key="template.id" :value="template.id">
-                  {{ template.name }} ({{ template.type }})
-                </option>
-              </select>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Environment</label>
-              <select 
-                v-model="deploymentConfig.environment" 
-                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
-                <option value="development">Development</option>
-                <option value="staging">Staging</option>
-                <option value="production">Production</option>
-              </select>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Deployment Name</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
               <input 
-                v-model="deploymentConfig.name" 
+                v-model="newTemplateData.name" 
                 type="text" 
-                placeholder="e.g., frontend-v1.2" 
+                placeholder="Enter template name" 
                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
               />
             </div>
             
             <div class="mb-4">
-              <h4 class="font-medium text-gray-700 mb-2">Environment Variables</h4>
-              <div v-for="(variable, index) in deploymentConfig.environmentVariables" :key="index" class="flex space-x-2 mb-2">
-                <input 
-                  v-model="variable.key" 
-                  type="text" 
-                  placeholder="Key" 
-                  class="w-1/2 border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                />
-                <input 
-                  v-model="variable.value" 
-                  type="text" 
-                  placeholder="Value" 
-                  class="w-1/2 border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                />
-                <button 
-                  @click="removeEnvironmentVariable(index)" 
-                  class="text-red-500 hover:text-red-700">
-                  <XIcon class="h-5 w-5" />
-                </button>
-              </div>
-              <button 
-                @click="addEnvironmentVariable" 
-                class="text-primary hover:text-primary-dark text-sm flex items-center mt-2">
-                <PlusIcon class="h-4 w-4 mr-1" />
-                Add Environment Variable
-              </button>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Template Env</label>
+              <select 
+                v-model="newTemplateData.env" 
+                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                <option value="Frontend">Frontend</option>
+                <option value="Backend">Backend</option>
+                <option value="Fullstack">Fullstack</option>
+              </select>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea 
+                v-model="newTemplateData.description" 
+                placeholder="Enter template description" 
+                class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+                rows="3"
+              ></textarea>
             </div>
             
             <div class="flex justify-end space-x-3 mt-6">
@@ -407,16 +429,10 @@
                 Cancel
               </button>
               <button 
-                @click="executeDeployment" 
-                :disabled="isDeploying" 
-                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                <span v-if="isDeploying" class="mr-2">
-                  <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </span>
-                {{ isDeploying ? 'Deploying...' : 'Start Deployment' }}
+                @click="openNewTemplateFlow" 
+                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
+                <PlusIcon class="h-4 w-4 mr-1" />
+                Create Template
               </button>
             </div>
           </div>
@@ -485,6 +501,7 @@ import {
 // Import your existing LogicFlow components
 import ExecutionDetail from './components/ExecutionDetail.vue';
 import LF from './components/LF.vue';
+import NewFlow from './components/NewFlow.vue';
 import { ElMessage } from 'element-plus';
 
 // View states
@@ -492,6 +509,25 @@ const activeTab = ref('home');
 const selectedTemplate = ref(null);
 const selectedDeployment = ref(null);
 const selectedPipeline = ref(null);
+const showNewFlow = ref(false);
+const newFlowRef = ref(null);
+const LFRef = ref(null);
+// New template data
+const newTemplateData = ref({
+  name: '',
+  env: 'Test',
+  description: '',
+  nodes: null,
+  edges: null
+});
+
+const updateTemplateData = ref({
+  name: '',
+  env: '',
+  description: '',
+  nodes: null,
+  edges: null
+})
 
 // Deployment state
 const showDeploymentModal = ref(false);
@@ -510,23 +546,92 @@ const deploymentToast = ref({
   timeout: null
 });
 
-// Functions for deployment
+// Function to open new template flow
+const openNewTemplateFlow = () => {
+  showDeploymentModal.value = false;
+  activeTab.value = 'templates';
+  showNewFlow.value = true;
+};
+
+// Function to handle new flow save from NewFlow component
+const handleNewFlowSave = () => {
+  const flowData   = newFlowRef.value.GetGraphData();
+  newTemplateData.value.nodes = flowData.nodes;
+  newTemplateData.value.edges = flowData.edges;
+  console.log('newTemplateData.value',newTemplateData.value)
+   saveNewTemplate();
+};
+
+const handleUpdateTemplate = () =>{
+  const flowData   = LFRef.value.LFGetGraphData();
+  console.log(flowData)
+
+  updateTemplateData.value.name = selectedTemplate.value.name;
+  updateTemplateData.value.env = selectedTemplate.value.env;
+  updateTemplateData.value.description = selectedTemplate.value.description;
+  updateTemplateData.value.nodes = flowData.nodes;
+  updateTemplateData.value.edges = flowData.edges;
+  console.log('updateTemplateData.value',updateTemplateData.value)
+  updateTemplate();
+}
+
+const updateTemplate = async () => {
+  try {
+    const response = await fetch("/api/v1/flow/"+updateTemplateData.value.name, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify( updateTemplateData.value)}
+  )
+    console.log(response)
+    if (!response.ok) {
+      ElMessage.error('Oops, this is a error message.')
+    }
+    ElMessage.info(
+      '保存成功'
+    )
+   } catch (e) {
+    console.log('保存template失败:', e)
+  }
+}
+
+// Function to save new template
+const saveNewTemplate = async () => {
+   if (!newTemplateData.value.name) {
+    showToast('error', 'Validation Error', 'Template name is required');
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/v1/flow/", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify( newTemplateData.value)}
+  )
+    console.log(response)
+    if (!response.ok) {
+      ElMessage.error('Oops, this is a error message.')
+    }
+    ElMessage.info(
+      '保存成功'
+    )
+   } catch (e) {
+    console.log('保存template失败:', e)
+  }
+};
+
+   
+
+// Functions for deployment TODO
 const startDeployment = (template) => {
   showDeploymentModal.value = true;
   deploymentConfig.value.templateId = template.id;
   deploymentConfig.value.name = `${template.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}`;
-  
-  // Pre-populate environment variables based on template config
-  deploymentConfig.value.environmentVariables = [];
-  
-  if (template.config && template.config.environmentVariables) {
-    template.config.environmentVariables.forEach(envVar => {
-      deploymentConfig.value.environmentVariables.push({
-        key: envVar,
-        value: ''
-      });
-    });
-  }
+  // 提示部署成功/失败 TODO
+
 };
 
 // Function to start deployment from pipeline
@@ -639,6 +744,27 @@ const viewWorkingDetails = (pipeline) => {
 };
 
 const templates = ref([]);
+
+const updateDeployment = () => {
+  try {
+    const response =  fetch("/api/v1/flow/", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify( newTemplateData.value)}
+  )
+    console.log(response)
+    if (!response.ok) {
+      ElMessage.error('Oops, this is a error message.')
+    }
+    ElMessage.info(
+      '保存成功'
+    )
+   } catch (e) {
+    console.log('保存template失败:', e)
+  }
+}
 
 // Function to fetch flows
 async function fetchFlows() {
