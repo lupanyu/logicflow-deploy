@@ -173,14 +173,14 @@
               <h2 class="text-2xl font-bold text-gray-800">Deployment: {{ selectedDeployment.name || selectedDeployment.flowId }}</h2>
             </div>
             <div class="flex space-x-3">
-              <button 
+              <!-- <button 
                 v-if="selectedDeployment.status !== 'In Progress'"
                 @click="redeployFromHistory(selectedDeployment)"
                 class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
                 :disabled="isDeploying">
                 <RocketIcon class="h-4 w-4 mr-1" />
                 {{ isDeploying ? 'Redeploying...' : 'Redeploy' }}
-              </button>
+              </button> -->
             </div>
           </div>
         </div>

@@ -76,6 +76,10 @@ func (a *DeploymentAgent) Run() {
 				continue
 			}
 			node := nodes.NewShellDeployNode(a.agentID, a.wsConn)
+			// 设置默认的超时时间为10分钟
+			if shell.Timeout == 0 {
+				shell.Timeout = 600
+			}
 			go node.Run(msg, shell)
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
