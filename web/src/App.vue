@@ -653,19 +653,13 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          templateName: template.name,
-          env: template.env,
-          description: template.description,
-          nodes: template.nodes,
-          edges: template.edges
-        })
+        body: JSON.stringify({})
       };
       if (typeof template === 'string') {
         url = '/api/v1/deploy/' + template;
-        args.body = JSON.stringify({});
-      }
-      console.log("template type", typeof template);
+       }else{
+        url = '/api/v1/deploy/' + template.name;
+       }
       console.log("url", url);
       console.log("args", args);
   

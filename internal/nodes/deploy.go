@@ -70,7 +70,7 @@ func sendStatus(conn *websocket.Conn, status *schema.TaskStep) {
 
 func sendLastResult(conn *websocket.Conn, data protocol.Message) {
 	data.Timestamp = time.Now().UnixNano()
-	log.Printf("[%s]发送部署任务的最后结果：%v", utils.GetCallerInfo(), data.Payload)
+	log.Printf("[%s]发送部署任务的最后结果：%s", utils.GetCallerInfo(), data.Payload)
 	_ = conn.WriteJSON(data)
 }
 
