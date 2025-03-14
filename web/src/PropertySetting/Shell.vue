@@ -9,17 +9,17 @@
         </el-form-item>
         
         <el-form-item label="前置脚本内容">
-          <el-input type="textarea" v-model="form.preScript" 
+          <el-input type="textarea" v-model="form.preScriptContent" 
             :autosize="{ minRows: 4 }" 
             placeholder="请输入前置脚本内容（如环境准备）"/>
         </el-form-item>
         <el-form-item label="部署脚本内容">
-          <el-input type="textarea" v-model="form.deployScript"
+          <el-input type="textarea" v-model="form.deployScriptContent"
             :autosize="{ minRows: 6 }"
             placeholder="请输入部署脚本内容（核心部署逻辑）"/>
         </el-form-item>
         <el-form-item label="后置脚本内容">
-          <el-input type="textarea" v-model="form.postScript"
+          <el-input type="textarea" v-model="form.postScriptContent"
             :autosize="{ minRows: 4 }"
             placeholder="请输入后置脚本内容（如清理操作）"/>
         </el-form-item>
@@ -40,9 +40,9 @@
   const form = reactive({
     appName: '',
     host: '',
-    preScript: '#!/bin/bash\necho pre  script',
-    deployScript: '#!/bin/bash\necho deploy script',
-    postScript: '#!/bin/bash\necho deploy script'
+    preScriptContent: '#!/bin/bash\necho pre  script',
+    deployScriptContent: '#!/bin/bash\necho deploy script',
+    postScriptContent: '#!/bin/bash\necho deploy script'
   })
 
   onMounted(() => {
@@ -57,9 +57,9 @@
       if (newProperties) {
         form.appName = newProperties.appName || ''
         form.host = newProperties.host || ''
-        form.preScript = newProperties.preScript || ''
-        form.deployScript = newProperties.deployScript || ''
-        form.postScript = newProperties.postScript || ''
+        form.preScriptContent = newProperties.preScriptContent || ''
+        form.deployScriptContent = newProperties.deployScriptContent || ''
+        form.postScriptContent = newProperties.postScriptContent || ''
       }
     },
     { immediate: true }
