@@ -193,8 +193,8 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
 			mem.Save(flowExecution)
-			if nodeStatus == schema.NodeStateFailed {
-				flowExecution.GlobalStatus = schema.NodeStateFailed
+			if nodeStatus == schema.NodeStateFailed || nodeStatus == schema.NodeStateTimeout || nodeStatus == schema.NodeStateRollbacked {
+				flowExecution.GlobalStatus = nodeStatus
 				flowExecution.EndTime = &now
 				log.Printf(" [%s]flow: %s 执行失败,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 				mem.Save(flowExecution)

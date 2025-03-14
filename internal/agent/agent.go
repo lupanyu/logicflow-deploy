@@ -60,6 +60,7 @@ func (a *DeploymentAgent) Run() {
 				log.Printf(" [%s]解析Web部署消息失败: %v", utils.GetCallerInfo(), err)
 				continue
 			}
+			log.Printf(" [%s]解析Web部署消息成功: %v", utils.GetCallerInfo(), web)
 			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, web)
 		case protocol.MsgJavaDeploy:
 			var java schema.JavaProperties
@@ -67,6 +68,7 @@ func (a *DeploymentAgent) Run() {
 				log.Printf(" [%s]解析Java部署消息失败: %v", utils.GetCallerInfo(), err)
 				continue
 			}
+			log.Printf(" [%s]解析Java部署消息成功: %v", utils.GetCallerInfo(), java)
 			node := nodes.NewJavaDeployNode(a.agentID, a.wsConn)
 			go node.Run(msg, java)
 		case protocol.MsgShellDeploy:
@@ -80,6 +82,7 @@ func (a *DeploymentAgent) Run() {
 			if shell.Timeout == 0 {
 				shell.Timeout = 600
 			}
+			log.Printf(" [%s]解析Shell部署消息成功: %v", utils.GetCallerInfo(), shell)
 			go node.Run(msg, shell)
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)

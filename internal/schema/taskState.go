@@ -14,7 +14,6 @@ const (
 	NodeStateSuccess    NodeStatus = "success"
 	NodeStateFailed     NodeStatus = "failed"
 	NodeStateSkipped    NodeStatus = "skipped"
-	NodeStateError      NodeStatus = "error"
 	NodeStateTimeout    NodeStatus = "timeout"    // 超时状态
 	NodeStateRollbacked NodeStatus = "rollbacked" // 已回滚状态
 )

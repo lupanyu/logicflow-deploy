@@ -113,6 +113,7 @@ func handleShellDeploy(step *schema.TaskStep, stepName, shell string, timeout in
 }
 func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, error) {
 	// 创建临时脚本文件
+	log.Printf("[%s] 执行脚本内容是：%s", utils.GetCallerInfo(), scriptContent)
 	tmpFile, err := os.CreateTemp("tmp/", "script-*.sh")
 	if err != nil {
 		return nil, fmt.Errorf("创建临时文件失败: %v", err)
@@ -132,7 +133,7 @@ func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, er
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// 执行脚本并捕获输出
-	cmd := exec.CommandContext(ctx, "sh ", tmpFile.Name())
+	cmd := exec.CommandContext(ctx, "sh", tmpFile.Name())
 	output, err := cmd.CombinedOutput()
 	// 执行结果检查
 	if ctx.Err() == context.DeadlineExceeded {
