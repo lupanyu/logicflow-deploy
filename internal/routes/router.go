@@ -8,6 +8,8 @@ import (
 )
 
 func RegisterAPIRoutes(r *gin.Engine, s *server.Server) {
+	// jenkins 任务
+	r.GET("/api/v1/jenkins", api.GetJenkinsData)
 	// 部署相关路由组
 	deployGroup := r.Group("/api/v1/deploy")
 	{

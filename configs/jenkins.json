@@ -10,7 +10,8 @@
       "name": "test_jenkins",
       "url": "http://jenkins.xiaoxinxin.com:8443",
       "username": "xiaomo",
-      "password": "HV7jh4nmSlzYSO3TFNct"
+      "password": "HV7jh4nmSlzYSO3TFNct",
+      "jobs": [ "test-xiaomo01"]
     }
   ]
 }

@@ -145,6 +145,7 @@ function updateEdgeStatus() {
       }
     }
   })
+
 }
 
  
@@ -235,7 +236,8 @@ function renderFlow() {
     edges: executionData.value.flowData?.edges?.map(edge => ({
       ...edge,
       type: 'myCurvedEdge', // 确保使用自定义边类型
-      text: edge.properties?.text // 传递状态文本
+      text: edge.properties?.text, // 传递状态文本
+      properties: edge.properties
     })) || []
 })
 }

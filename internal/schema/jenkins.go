@@ -1,10 +1,11 @@
 package schema
 
 type JenkinsConnection struct {
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Name     string   `json:"name"`
+	URL      string   `json:"url"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Jobs     []string `json:"jobs"`
 }
 
 type JenkinsProperties struct {

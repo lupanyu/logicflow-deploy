@@ -78,11 +78,12 @@ func (n *NodeState) AppendTaskStep(taskStep TaskStep) {
 
 // FlowExecution 表示整个flow流程，包含所有节点的执行结果
 type FlowExecution struct {
-	FlowID       string               `json:"flowId"`      // 流程唯一ID
+	FlowID       string               `json:"flowId"` // 流程唯一ID
+	Name         string               `json:"name"`
 	GlobalStatus NodeStatus           `json:"status"`      // 全局执行状态（新增）
 	StartTime    *carbon.Carbon       `json:"startTime"`   // 改为指针类型，可空
 	EndTime      *carbon.Carbon       `json:"endTime"`     // 改为指针类型，可空
-	Duration     float64              `json:"duration"`    // 新增执行耗时（秒）
+	Duration     int64                `json:"duration"`    // 新增执行耗时（秒）
 	NodeResults  map[string]NodeState `json:"nodeResults"` // key 是 node 的 id，value 是 node 的执行结果
 	FlowData     Template             `json:"flowData"`    // 原始数据
 }
@@ -90,7 +91,8 @@ type FlowExecution struct {
 // 持续时间计算方法
 func (f *FlowExecution) CalculateDuration() {
 	if f.StartTime != nil && f.EndTime != nil {
-		f.Duration = float64(int(f.EndTime.DiffAbsInDuration(*f.StartTime)))
+		// 计算持续时间（秒）
+		f.Duration = f.StartTime.DiffInSeconds(*f.EndTime)
 	}
 }
 

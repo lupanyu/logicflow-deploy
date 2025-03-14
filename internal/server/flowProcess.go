@@ -128,6 +128,7 @@ func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 	// 初始化存储数据
 	flowExecution := schema.FlowExecution{
 		FlowID:       fp.FlowID,
+		Name:         fp.flowData.Name,
 		GlobalStatus: schema.NodeStatePending,
 		FlowData:     fp.flowData,
 		NodeResults:  make(map[string]schema.NodeState),
@@ -160,6 +161,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 		flowExecution, ok := mem.Get(fp.FlowID)
 		if !ok {
 			flowExecution = schema.FlowExecution{
+				Name:        fp.flowData.Name,
 				FlowID:      fp.FlowID,
 				NodeResults: make(map[string]schema.NodeState),
 			}
@@ -196,6 +198,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			if nodeStatus == schema.NodeStateFailed || nodeStatus == schema.NodeStateTimeout || nodeStatus == schema.NodeStateRollbacked {
 				flowExecution.GlobalStatus = nodeStatus
 				flowExecution.EndTime = &now
+				flowExecution.CalculateDuration()
 				log.Printf(" [%s]flow: %s 执行失败,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 				mem.Save(flowExecution)
 				break
@@ -207,6 +210,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 					log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 					flowExecution.GlobalStatus = schema.NodeStateSuccess
 					flowExecution.EndTime = &now
+					flowExecution.CalculateDuration()
 					mem.Save(flowExecution)
 					break
 				}

@@ -58,7 +58,7 @@
             </div>
             <div class="flex space-x-3">
               <button 
-                @click="saveNewTemplate"
+                @click="handleNewFlowSave()"
                 class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                 <CheckCircleIcon class="h-4 w-4 mr-1" />
                 Save Template
@@ -100,15 +100,7 @@
           
           <!-- LogicFlow Canvas for Template Creation with Save Button -->
           <div class="border rounded-lg relative" style="height: 500px;">
-            <div class="absolute top-4 right-4 z-10">
-              <button 
-                @click="getGraphDataAndSave" 
-                class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center shadow-md">
-                <CheckCircleIcon class="h-4 w-4 mr-1" />
-                Save
-              </button>
-            </div>
-            <NewFlow ref="newFlowRef" @save="handleNewFlowSave" />
+            <NewFlow ref="newFlowRef" @save="handleNewFlowSave" />--------------------
           </div>
         </div>
       </div>
@@ -209,7 +201,7 @@
               <p class="font-medium">{{ selectedDeployment.endTime }}</p>
             </div>
             <div v-if="selectedDeployment.duration">
-              <p class="text-sm text-gray-500">Duration</p>
+              <p class="text-sm text-gray-500">SpendTime</p>
               <p class="font-medium">{{selectedDeployment.duration }}</p>
             </div>
           </div>
@@ -359,10 +351,11 @@
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SpendTime</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -370,6 +363,9 @@
                 <tr v-for="deployment in sortedDeployHistory" :key="deployment.flowId" class="hover:bg-gray-50">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-gray-900">{{ deployment.flowId }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-gray-900">{{ deployment.name }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span :class="['px-2 py-1 text-xs rounded-full', 
@@ -505,6 +501,13 @@
   // Function to open new template flow
   const openNewTemplateFlow = () => {
     activeTab.value = 'templates';
+    newTemplateData.value = {
+      name: '',
+      env: 'Test',
+      description: '',
+      nodes: null,
+      edges: null
+    };
     showNewFlow.value = true;
   };
   
@@ -515,41 +518,14 @@
   const setSelectedDeployment = (deployment) => {
     selectedDeployment.value = deployment;
   }
-  // Function to get graph data from NewFlow component and save it
-  const getGraphDataAndSave = () => {
-    if (!newFlowRef.value) {
-      showToast('error', 'Error', 'Cannot access flow editor');
-      return;
-    }
-  
-    // Access the graphData from the NewFlow component
-    if (newFlowRef.value.graphData && newFlowRef.value.graphData.value) {
-      // Store the graph data in our template data
-      newTemplateData.value.flowData = newFlowRef.value.graphData.value;
-      // Call save function
-      saveNewTemplate();
-    } else {
-      // Trigger the catData method in the NewFlow component to get the data
-      if (typeof newFlowRef.value.catData === 'function') {
-        newFlowRef.value.catData();
-        // Wait a moment for the data to be processed
-        setTimeout(() => {
-          if (newFlowRef.value.graphData && newFlowRef.value.graphData.value) {
-            newTemplateData.value.flowData = newFlowRef.value.graphData.value;
-            saveNewTemplate();
-          } else {
-            showToast('error', 'Error', 'Failed to get flow data');
-          }
-        }, 100);
-      } else {
-        showToast('error', 'Error', 'Cannot access flow data method');
-      }
-    }
-  };
+
   
   // Function to handle new flow save from NewFlow component
   const handleNewFlowSave = () => {
     const flowData = newFlowRef.value.GetGraphData();
+    newTemplateData.value.name = newTemplateData.value.name.trim();
+    newTemplateData.value.description = newTemplateData.value.description.trim();
+    newTemplateData.value.env = newTemplateData.value.env.trim();
     newTemplateData.value.nodes = flowData.nodes;
     newTemplateData.value.edges = flowData.edges;
     console.log('newTemplateData.value', newTemplateData.value);
@@ -608,7 +584,8 @@
       showToast('error', 'Validation Error', 'Template name is required');
       return;
     }
-  
+
+    console.log('newTemplateData.value:', newTemplateData.value);
     try {
       const response = await fetch("/api/v1/flow/", {
         method: 'POST',
