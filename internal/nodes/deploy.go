@@ -132,8 +132,12 @@ func executeShellScript(scriptContent string, timeout time.Duration) ([]byte, er
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// 执行脚本并捕获输出
-	cmd := exec.CommandContext(ctx, tmpFile.Name())
+	cmd := exec.CommandContext(ctx, "sh ", tmpFile.Name())
 	output, err := cmd.CombinedOutput()
+	// 执行结果检查
+	if ctx.Err() == context.DeadlineExceeded {
+		return output, fmt.Errorf("脚本执行超时: %v", timeout)
+	}
 	if err != nil {
 		return output, fmt.Errorf("脚本执行失败: %v", err)
 	}

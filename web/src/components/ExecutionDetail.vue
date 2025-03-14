@@ -34,7 +34,7 @@ const lf = ref(null)
 const logVisible = ref(false)
 const selectedNode = ref(null)
 const executionData = ref({})
-const execResult = ref({})
+const executionDetailResult = ref({})
 const cors = {
       mode: 'cors', // 明确跨域模式
       headers: {
@@ -42,6 +42,10 @@ const cors = {
       }
 }
 
+const props = defineProps({
+  getSelectedDeployment: Function, // 接收父组件的方法作为属性
+  setSelectedDeployment: Function, // 接收父组件的方法作为属性
+})
 
 async function initLf () {
        // 画布配置
@@ -169,7 +173,8 @@ async function fetchExecutionData(flowId) {
       ElMessage.error('Oops, this is a error message.')
     }
     executionData.value = await response.json()
-    console.log(executionData.value)
+    props.setSelectedDeployment(executionData.value)
+     console.log(executionData.value)
     updateEdgeStatus() // 新增调用
 
     renderFlow()
@@ -239,13 +244,18 @@ function renderFlow() {
 let timer = null
 onMounted(() => {
   initLf()
-  const flowId = props.flowId
-  console.log(flowId)
+  executionData.value = props.getSelectedDeployment()
+  if (!executionData.value.flowId) {
+   console.log('未获取到flowId')
+    return 
+  }
+  console.log(executionData.value)
+  const flowId = executionData.value.flowId
   fetchExecutionData(flowId)
   // fetchExecutionData()
   timer = setInterval(()=> {
-    if (execResult.value.status === 'running') {
-      fetchExecutionData(props.execResult.flowId)
+    if (executionData.value.status === 'running') {
+      fetchExecutionData(flowId)
     }else{
       // 如果不是running 就 停止轮询
       clearInterval(timer)
@@ -257,9 +267,6 @@ onBeforeUnmount(() => {
   clearInterval(timer)
 })
 
-defineExpose({
-    executionData
-    })  
 </script>
 
 <style scoped>

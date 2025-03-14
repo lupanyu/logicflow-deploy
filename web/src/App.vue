@@ -189,33 +189,36 @@
             <div>
               <p class="text-sm text-gray-500">Status</p>
               <span :class="['px-2 py-1 text-xs rounded-full', 
-                selectedDeployment.status === 'success' ? 'bg-green-100 text-green-800' : 
-                selectedDeployment.status === 'failed' ? 'bg-red-100 text-red-800' : 
+                selectedDeployment?.status === 'success' ? 'bg-green-100 text-green-800' : 
+                selectedDeployment?.status === 'failed' ? 'bg-red-100 text-red-800' : 
                 'bg-yellow-100 text-yellow-800']">
-                {{ ExecutionDetailRef.executionData?.status || selectedDeployment.status }}
+                {{  selectedDeployment.status }}
               </span>
             </div>
             <div>
               <p class="text-sm text-gray-500">Started At</p>
-              <p class="font-medium">{{ ExecutionDetailRef.executionData?.startTime  || selectedDeployment.startTime }}</p>
+              <p class="font-medium">{{ selectedDeployment.startTime }}</p>
             </div>
-
-            <div v-if="selectedDeployment.environment">
+  
+            <div v-if="  selectedDeployment.env">
               <p class="text-sm text-gray-500">Env</p>
-              <p class="font-medium">{{ ExecutionDetailRef.executionData?.env || selectedDeployment.env}}</p>
+              <p class="font-medium">{{  selectedDeployment.env }}</p>
             </div>
-            <div v-if="selectedDeployment.endTime">
+            <div v-if=" selectedDeployment.endTime">
               <p class="text-sm text-gray-500">Ended At</p>
-              <p class="font-medium">{{ ExecutionDetailRef.executionData?.endTime || selectedDeployment.endTime}}</p>
+              <p class="font-medium">{{ selectedDeployment.endTime }}</p>
             </div>
             <div v-if="selectedDeployment.duration">
               <p class="text-sm text-gray-500">Duration</p>
-              <p class="font-medium">{{ ExecutionDetailRef.executionData?.duration || selectedDeployment.duration}}</p>
+              <p class="font-medium">{{selectedDeployment.duration }}</p>
             </div>
           </div>
           
           <!-- ExecutionDetail Component for Deployment -->
-          <ExecutionDetail :flowId="selectedDeployment.flowId" ref="ExecutionDetailRef"/>
+          <ExecutionDetail :getSelectedDeployment="getSelectedDeployment"
+            :setSelectedDeployment="setSelectedDeployment"
+            ref="ExecutionDetailRef"
+           />
         </div>
       </div>
   
@@ -364,7 +367,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="deployment in deployHistory" :key="deployment.flowId" class="hover:bg-gray-50">
+                <tr v-for="deployment in sortedDeployHistory" :key="deployment.flowId" class="hover:bg-gray-50">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-gray-900">{{ deployment.flowId }}</div>
                   </td>
@@ -440,7 +443,7 @@
   </template>
   
   <script setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, computed } from 'vue';
   import { 
     ServerIcon, 
     HomeIcon, 
@@ -462,7 +465,6 @@
   import ExecutionDetail from './components/ExecutionDetail.vue';
   import LF from './components/LF.vue';
   import NewFlow from './components/NewFlow.vue';
-
   
   // View states
   const activeTab = ref('home');
@@ -475,23 +477,23 @@
   // New template data
   const newTemplateData = ref({
     name: '',
-  env: 'Test',
+    env: 'Test',
     description: '',
-  nodes: null,
-  edges: null
+    nodes: null,
+    edges: null
   });
   
-const updateTemplateData = ref({
-  name: '',
-  env: '',
-  description: '',
-  nodes: null,
-  edges: null
-})
-
-// Deployment state
- const isDeploying = ref(false);
- 
+  const updateTemplateData = ref({
+    name: '',
+    env: '',
+    description: '',
+    nodes: null,
+    edges: null
+  });
+  
+  // Deployment state
+  const isDeploying = ref(false);
+   
   const deploymentToast = ref({
     show: false,
     type: 'info',
@@ -506,6 +508,13 @@ const updateTemplateData = ref({
     showNewFlow.value = true;
   };
   
+  const getSelectedDeployment = () => {
+    return selectedDeployment.value;
+  };
+
+  const setSelectedDeployment = (deployment) => {
+    selectedDeployment.value = deployment;
+  }
   // Function to get graph data from NewFlow component and save it
   const getGraphDataAndSave = () => {
     if (!newFlowRef.value) {
@@ -539,142 +548,148 @@ const updateTemplateData = ref({
   };
   
   // Function to handle new flow save from NewFlow component
-const handleNewFlowSave = () => {
-  const flowData   = newFlowRef.value.GetGraphData();
-  newTemplateData.value.nodes = flowData.nodes;
-  newTemplateData.value.edges = flowData.edges;
-  console.log('newTemplateData.value',newTemplateData.value)
+  const handleNewFlowSave = () => {
+    const flowData = newFlowRef.value.GetGraphData();
+    newTemplateData.value.nodes = flowData.nodes;
+    newTemplateData.value.edges = flowData.edges;
+    console.log('newTemplateData.value', newTemplateData.value);
     saveNewTemplate();
   };
   
-const handleUpdateTemplate = () =>{
-  const flowData   = LFRef.value.LFGetGraphData();
-  console.log(flowData)
-
-  updateTemplateData.value.name = selectedTemplate.value.name;
-  updateTemplateData.value.env = selectedTemplate.value.env;
-  updateTemplateData.value.description = selectedTemplate.value.description;
-  updateTemplateData.value.nodes = flowData.nodes;
-  updateTemplateData.value.edges = flowData.edges;
-  console.log('updateTemplateData.value',updateTemplateData.value)
-  updateTemplate();
-}
-
-const updateTemplate = async () => {
-  try {
-    const response = await fetch("/api/v1/flow/"+updateTemplateData.value.name, {
-    method: 'PUT',
+  const handleUpdateTemplate = () => {
+    const flowData = LFRef.value.LFGetGraphData();
+    console.log(flowData);
+  
+    updateTemplateData.value.name = selectedTemplate.value.name;
+    updateTemplateData.value.env = selectedTemplate.value.env;
+    updateTemplateData.value.description = selectedTemplate.value.description;
+    updateTemplateData.value.nodes = flowData.nodes;
+    updateTemplateData.value.edges = flowData.edges;
+    console.log('updateTemplateData.value', updateTemplateData.value);
+    updateTemplate();
+  };
+  
+  const updateTemplate = async () => {
+    try {
+      const response = await fetch("/api/v1/flow/"+updateTemplateData.value.name, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-    body: JSON.stringify( updateTemplateData.value)}
-  )
-    console.log(response)
+        body: JSON.stringify(updateTemplateData.value)
+      });
+      console.log(response);
       if (!response.ok) {
         showToast(
           'error',
           'Update Failed',
           'Update template failed:'+response.statusText+response.body
-        )
-     }
-    showToast(
-      'success',
-      'Update Success',
-      'Update template success'
-    )
-   } catch (e) {
-    console.log('保存template失败:', e)
-  }
-}
-
-// Function to save new template
-const saveNewTemplate = async () => {
-   if (!newTemplateData.value.name) {
-    showToast('error', 'Validation Error', 'Template name is required');
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/v1/flow/", {
+        );
+        return;
+      }
+      showToast(
+        'success',
+        'Update Success',
+        'Update template success'
+      );
+    } catch (e) {
+      console.log('保存template失败:', e);
+      showToast(
+        'error',
+        'Update Failed',
+        'Update template failed: ' + e.message
+      );
+    }
+  };
+  
+  // Function to save new template
+  const saveNewTemplate = async () => {
+    if (!newTemplateData.value.name) {
+      showToast('error', 'Validation Error', 'Template name is required');
+      return;
+    }
+  
+    try {
+      const response = await fetch("/api/v1/flow/", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-    body: JSON.stringify( newTemplateData.value)}
-  )
-    console.log(response)
-    if (!response.ok) {
+        body: JSON.stringify(newTemplateData.value)
+      });
+      console.log(response);
+      if (!response.ok) {
+        showToast(
+          'error',
+          'Save Failed',
+          'Save template failed:'+response.statusText+response.body
+        );
+        return;
+      }
+      showToast(
+        'success',
+        'Save Success',
+        'Save template success'
+      );
+      // Refresh templates list
+      await fetchFlows();
+    } catch (e) {
+      console.log('保存template失败:', e);
       showToast(
         'error',
         'Save Failed',
-        'Save template failed:'+response.statusText+response.body
-      )
-      return;
-     }
-    showToast(
-     'success',
-      'Save Success',
-      'Save template success'
-    )
-   } catch (e) {
-    console.log('保存template失败:', e)
-  }
-};
-
-
-const executeDeployment = async (template) => {
-  isDeploying.value = true;
-  console.log ("template",template)
-  try {
-     let url = '/api/v1/deploy/'
-     let args = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        templateName: template.name,
-        env: template.env,
-        description: template.description,
-        nodes: template.nodes,
-        edges: template.edges
-      })
-     } 
-     if (typeof template ==='string'){
-      url = '/api/v1/deploy/'+template
-      args.body = JSON.stringify({ })
-     };
-     console.log("template type",typeof template)
-     console.log("url",url)
-     console.log("args",args)
-
-     const response =  await fetch(url,args);
-     console.log("response",response)
-     const data = await response.json()
-     if (!response.ok) {
-      showToast('error', 'Deployment Failed', data.error || 'There was an error starting the deployment. Please try again.');
-      return;
-     }
+        'Save template failed: ' + e.message
+      );
+    }
+  };
+  
+  const executeDeployment = async (template) => {
+    isDeploying.value = true;
+    console.log("template", template);
+    try {
+      let url = '/api/v1/deploy/';
+      let args = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          templateName: template.name,
+          env: template.env,
+          description: template.description,
+          nodes: template.nodes,
+          edges: template.edges
+        })
+      };
+      if (typeof template === 'string') {
+        url = '/api/v1/deploy/' + template;
+        args.body = JSON.stringify({});
+      }
+      console.log("template type", typeof template);
+      console.log("url", url);
+      console.log("args", args);
+  
+      const response = await fetch(url, args);
+      console.log("response", response);
+      const data = await response.json();
+      if (!response.ok) {
+        showToast('error', 'Deployment Failed', data.error || 'There was an error starting the deployment. Please try again.');
+        return;
+      }
       // Show success toast
-      showToast('success', 'Deployment Started', selectedTemplate.name||template + ' is now being deployed ...');
-      switchTab('history');
-      // Switch to history tab to show the deployment progress
-      activeTab.value = 'history';
+      showToast('success', 'Deployment Started', (selectedTemplate.value?.name || template) + ' is now being deployed ...');
       
-      // Refresh deployment history
-      await fetchDeployHistory();
+      // Switch to history tab to show the deployment progress
+      switchTab('history');
       
     } catch (error) {
       // Show error toast
-      showToast('error', 'Redeployment Failed', error.message || 'There was an error starting the redeployment. Please try again.');
-      console.error('Redeployment error:', error);
+      showToast('error', 'Deployment Failed', error.message || 'There was an error starting the deployment. Please try again.');
+      console.error('Deployment error:', error);
     } finally {
-      // Close loading indicator
-      // loading.close();
       isDeploying.value = false;
     }
   };
-
   
   const showToast = (type, title, message) => {
     // Clear any existing timeout
@@ -719,34 +734,6 @@ const executeDeployment = async (template) => {
   };
   
   const templates = ref([]);
-
-const updateDeployment = () => {
-  try {
-    const response =  fetch("/api/v1/flow/", {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify( newTemplateData.value)}
-  )
-    console.log(response)
-    if (!response.ok) {
-      showToast(
-        'error',
-        'Update Failed',
-        'Update template failed:'+response.statusText+response.body
-      )
-      return
-     }
-    showToast(
-      'success',
-        'Update Success',
-        'Update template success'
-      )
-   } catch (e) {
-    console.log('保存template失败:', e)
-  }
-}
   
   // Function to fetch flows
   async function fetchFlows() {
@@ -763,7 +750,7 @@ const updateDeployment = () => {
       templates.value = result.data || [];
     } catch (e) {
       showToast('error', 'Error get flowlist', e.message);
-     } 
+    } 
   }
   
   // Mock data for pipelines
@@ -807,6 +794,17 @@ const updateDeployment = () => {
   
   const deployHistory = ref([]);
   
+  // Computed property to sort deployment history by start time (newest first)
+  const sortedDeployHistory = computed(() => {
+    return [...deployHistory.value].sort((a, b) => {
+      // Convert dates to timestamps for comparison
+      const dateA = new Date(a.startTime || 0).getTime();
+      const dateB = new Date(b.startTime || 0).getTime();
+      // Sort in descending order (newest first)
+      return dateB - dateA;
+    });
+  });
+  
   // Function to fetch deployments
   const fetchDeployHistory = async () => {
     try {
@@ -822,38 +820,39 @@ const updateDeployment = () => {
       deployHistory.value = result || [];
     } catch (e) {
       showToast('error', 'Error get deploy history', e.message);
-     } 
+    } 
   };
+  
   // Function to switch tabs and fetch relevant data
-const switchTab = async (tab) => {
-  activeTab.value = tab;
-  selectedTemplate.value = null;
-  selectedDeployment.value = null;
-  showNewFlow.value = false;
-
-  // Fetch data based on the selected tab
-  if (tab === 'templates') {
-    await fetchFlows();
-  } else if (tab === 'history') {
-    await fetchDeployHistory();
-  } else if (tab === 'working') {
-    await fetchWorkingPipelines();
-  }
-};
-
-// Function to fetch working pipelines
-const fetchWorkingPipelines = async () => {
-  try {
-    
-    console.log('Fetching working pipelines');
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-  } catch (e) {
-    showToast('error', 'Error fetching working pipelines', e.message);
-   }
-};
+  const switchTab = async (tab) => {
+    activeTab.value = tab;
+    selectedTemplate.value = null;
+    selectedDeployment.value = null;
+    showNewFlow.value = false;
+  
+    // Fetch data based on the selected tab
+    if (tab === 'templates') {
+      await fetchFlows();
+    } else if (tab === 'history') {
+      await fetchDeployHistory();
+    } else if (tab === 'working') {
+      await fetchWorkingPipelines();
+    }
+  };
+  
+  // Function to fetch working pipelines
+  const fetchWorkingPipelines = async () => {
+    try {
+      console.log('Fetching working pipelines');
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (e) {
+      showToast('error', 'Error fetching working pipelines', e.message);
+    }
+  };
+  
   onMounted(() => {
-
+    // Initial app setup if needed
   });
   </script>
   
