@@ -11,10 +11,8 @@
     <pre class="log-pre">
       <template v-if="selectedNode?.logs">
         <template v-for="(line, index) in formatLogs(selectedNode.logs)" :key="index">
-          <div v-if="line.isTimestamp" class="timestamp-line">
-            <span class="timestamp">{{ line.content }}</span>
-          </div>
-          <div v-else class="log-line">{{ line.content }}</div>
+          <span v-if="line.isTimestamp" class="timestamp">{{ line.content }}</span>
+          <span v-else class="log-line">{{ line.content }}</span>
         </template>
       </template>
       <span v-else>无日志</span>
@@ -25,14 +23,13 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute,useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import LogicFlow from '@logicflow/core'
-   import '@logicflow/core/lib/style/index.css'
-  import '@logicflow/extension/lib/style/index.css'
-  import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
-  // import demoData from  './demo-data.json'  
-  import { ElMessage } from 'element-plus'
-  import edges from '../LFComponents/edges/index.js' 
+import '@logicflow/core/lib/style/index.css'
+import '@logicflow/extension/lib/style/index.css'
+import { registerStart, registerEnd, registerJava, registerWeb, registerJenkins, registerShell } from '../LFComponents/nodes/'
+import { ElMessage } from 'element-plus'
+import edges from '../LFComponents/edges/index.js' 
  
 const router = useRouter()
 const container = ref(null)
@@ -42,20 +39,19 @@ const selectedNode = ref(null)
 const executionData = ref({})
 const executionDetailResult = ref({})
 const cors = {
-      mode: 'cors', // 明确跨域模式
+      mode: 'cors',
       headers: {
         'Content-Type': 'application/json'
       }
 }
 
 const props = defineProps({
-  getSelectedDeployment: Function, // 接收父组件的方法作为属性
-  setSelectedDeployment: Function, // 接收父组件的方法作为属性
+  getSelectedDeployment: Function,
+  setSelectedDeployment: Function,
 })
 
 function formatLogs(logs) {
-  console.log(logs)
-  const logLines = logs.split('\n').filter(line => line.trim() !== ''); // 过滤空行
+  const logLines = logs.split('\n').filter(line => line.trim() !== '');
   const timestampReg = /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\])(.*)/;
   const result = [];
 
@@ -74,14 +70,10 @@ function formatLogs(logs) {
       result.push({ isTimestamp: false, content: line });
     }
   });
-  console.log(result)
   return result;
 }
 
 async function initLf () {
-       // 画布配置
-       // LogicFlow.use(SelectionSelect);
-
       lf.value = new LogicFlow({
         width: 1000,
         height: 600,
@@ -95,34 +87,32 @@ async function initLf () {
         keyboard: {
           enabled: true
         },
-        usePassiveEvent: true,// 被动事件
+        usePassiveEvent: true,
         edgeTextDraggable: true,
         hoverOutline: false,
-        isSilentMode: true, // 禁用所有交互
-        stopScrollGraph: true, // 禁止画布滚动
-        stopZoomGraph: true,  // 禁止缩放
-        adjustNodePosition: false, // 禁止节点拖拽
-        disabledPlugins: ['control'], // 禁用控制点件
- 
-          container: container.value,
+        isSilentMode: true,
+        stopScrollGraph: true,
+        stopZoomGraph: true,
+        adjustNodePosition: false,
+        disabledPlugins: ['control'],
+        container: container.value,
       })
    
       lf.value.register(edges)
       lf.value.setDefaultEdgeType('myCurvedEdge')
-      // 添加节点点击事件监听
-lf.value.on('node:click', ({ data }) => {
-  selectedNode.value = {
-    ...executionData.value.nodeResults[data.id],
-    id: data.id
-  }
-  logVisible.value = true
-})
+      
+      lf.value.on('node:click', ({ data }) => {
+        selectedNode.value = {
+          ...executionData.value.nodeResults[data.id],
+          id: data.id
+        }
+        logVisible.value = true
+      })
+      
       initEvent()
-      // 注册节点
       registerNode()
-
   }
-  // 注册节点
+  
   function registerNode () {
     const nodeConfig = {
       width: 60,
@@ -134,17 +124,15 @@ lf.value.on('node:click', ({ data }) => {
         }
       }
     };
-    // 注册节点
+    
     registerStart(lf.value,nodeConfig)
-     registerEnd(lf.value,nodeConfig)
+    registerEnd(lf.value,nodeConfig)
     registerWeb(lf.value,nodeConfig)
     registerJava(lf.value,nodeConfig)
     registerJenkins(lf.value,nodeConfig)
     registerShell(lf.value,nodeConfig)
-    // 注册节点到拖拽面板里
-    //lf.value.extension.dndPanel.setPatternItems(nodeList)
   }
-// 在fetchExecutionData之后添加以下方法
+
 function updateEdgeStatus() {
   const statusColors = {
     pending: '#CCCCCC',
@@ -176,170 +164,147 @@ function updateEdgeStatus() {
       }
     }
   })
-
 }
 
- 
-   // 事件监听
-   function initEvent () {
-    lf.value.on('blank:click', () => {
+function initEvent () {
+  lf.value.on('blank:click', () => {
     logVisible.value = false
   })
-  } 
-// 获取执行记录
+} 
+
 async function fetchExecutionData(flowId) {
   try {
-    // url参数为执行记录id
     const url = "/api/v1/deploy/"+flowId
-    console.log(url)
     const response = await fetch(url,cors)
-    console.log(response)
+    
     if (response.status === 404) {
       ElMessage.warning('请求的执行记录不存在...')
-      // 跳转到首页
-
       setTimeout(() => {router.push('/')}, 2000)
       return
     }
+    
     if (!response.ok) {
       ElMessage.error('Oops, this is a error message.')
     }
+    
     executionData.value = await response.json()
     props.setSelectedDeployment(executionData.value)
-     console.log(executionData.value)
-    updateEdgeStatus() // 新增调用
-
+    updateEdgeStatus()
     renderFlow()
   } catch (e) {
     console.log('获取执行记录失败', e)
   }
 }
 
-// 渲染流程图
 function renderFlow() {
-    // 确保每次渲染都使用最新数据
     const nodes = executionData.value.flowData?.nodes?.map(node => ({
-    ...node,
-    properties: {
-      ...node.properties,
-      // 添加状态类名用于CSS匹配
-      class: `status-${executionData.value.nodeResults[node.id]?.status || 'pending'}`
-    }
-  })) || []
-
-  const edges = executionData.value.flowData?.edges?.map(edge => ({
-    ...edge,
-    type: 'myCurvedEdge',
-    text: edge.properties?.text,
-    properties: {
-      ...edge.properties,
-      // 强制应用样式
-      style: edge.properties?.style 
-    }
-  })) || []
-    if (!lf.value) {
-    lf.value = new LogicFlow({
-      container: container.value,
-      grid: true,
-      isSilentMode: true, // 禁用交互
-      disabledPlugins: ['control', 'dnd-panel'], // 禁用不需要的插件
-     })
-    
-    // 自定义节点点击事件
-    lf.value.on('node:click', ({ data }) => {
-      selectedNode.value = executionData.value.nodeResults[data.id]
-      logVisible.value = true
-    })
-        // 添加样式更新逻辑
-        lf.value.on('render:finished', () => {
-      nodes.forEach(node => {
-        const element = document.querySelector(`[data-id="${node.id}"]`)
-        if (element) {
-          element.className.baseVal = node.properties.class
-        }
-      })})
-  }
-  
-
-  
-  lf.value.render({
-    nodes,
-    edges: executionData.value.flowData?.edges?.map(edge => ({
-      ...edge,
-      type: 'myCurvedEdge', // 确保使用自定义边类型
-      text: edge.properties?.text, // 传递状态文本
-      properties: edge.properties
+      ...node,
+      properties: {
+        ...node.properties,
+        class: `status-${executionData.value.nodeResults[node.id]?.status || 'pending'}`
+      }
     })) || []
-})
+
+    const edges = executionData.value.flowData?.edges?.map(edge => ({
+      ...edge,
+      type: 'myCurvedEdge',
+      text: edge.properties?.text,
+      properties: {
+        ...edge.properties,
+        style: edge.properties?.style 
+      }
+    })) || []
+    
+    if (!lf.value) {
+      lf.value = new LogicFlow({
+        container: container.value,
+        grid: true,
+        isSilentMode: true,
+        disabledPlugins: ['control', 'dnd-panel'],
+      })
+      
+      lf.value.on('node:click', ({ data }) => {
+        selectedNode.value = executionData.value.nodeResults[data.id]
+        logVisible.value = true
+      })
+      
+      lf.value.on('render:finished', () => {
+        nodes.forEach(node => {
+          const element = document.querySelector(`[data-id="${node.id}"]`)
+          if (element) {
+            element.className.baseVal = node.properties.class
+          }
+        })
+      })
+    }
+  
+    lf.value.render({
+      nodes,
+      edges: executionData.value.flowData?.edges?.map(edge => ({
+        ...edge,
+        type: 'myCurvedEdge',
+        text: edge.properties?.text,
+        properties: edge.properties
+      })) || []
+    })
 }
 
-// 轮询更新数据
 let timer = null
 onMounted(() => {
   initLf()
   executionData.value = props.getSelectedDeployment()
+  
   if (!executionData.value.flowId) {
-   console.log('未获取到flowId')
+    console.log('未获取到flowId')
     return 
   }
-  console.log(executionData.value)
+  
   const flowId = executionData.value.flowId
   fetchExecutionData(flowId)
-  // fetchExecutionData()
-  timer = setInterval(()=> {
+  
+  timer = setInterval(() => {
     if (executionData.value.status === 'running') {
       fetchExecutionData(flowId)
-    }else{
-      // 如果不是running 就 停止轮询
+    } else {
       clearInterval(timer)
-     }
-      },5000)
+    }
+  }, 5000)
 })
 
 onBeforeUnmount(() => {
   clearInterval(timer)
 })
-
 </script>
 
 <style scoped>
 .log-pre {
   line-height: 1.2;
   margin: 0;
-  padding: 0;
-  font-size: 12px;
+  padding: 8px;
+  font-size: 14px;
   font-family: monospace;
   white-space: pre-wrap;
   overflow-y: auto;
   max-height: 60vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.log-line, .timestamp-line {
+.log-line, .timestamp {
+  display: block;
   margin: 0;
   padding: 0;
   line-height: 1.2;
-  display: block;
-}
-
-.timestamp-line {
-  margin-top: 4px;
-  margin-bottom: 0;
-}
-
-.log-line {
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-left: 20px;
 }
 
 .timestamp {
   color: #67C23A;
   font-weight: 500;
+  margin-top: 4px;
 }
 
-.error-message {
-  color: #f56c6c;
-  margin-top: 8px;
+.log-line {
+  padding-left: 20px;
 }
 
 /* 根据状态设置节点颜色 */
