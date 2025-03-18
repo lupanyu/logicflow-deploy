@@ -8,10 +8,17 @@
       :title="`${selectedNode?.id} 执行日志`"
       width="70%"
     >
-      <pre class="log-pre">{{ selectedNode?.logs || '无日志' }}</pre>
-      <div v-if="selectedNode?.error" class="error-message">
-        错误信息：{{ selectedNode.error }}
-      </div>
+    <pre class="log-pre">
+      <template v-if="selectedNode?.logs">
+        <template v-for="(line, index) in formatLogs(selectedNode.logs)" :key="index">
+          <div v-if="line.isTimestamp" class="timestamp-line">
+            <span class="timestamp">{{ line.content }}</span>
+          </div>
+          <div v-else class="log-line">{{ line.content }}</div>
+        </template>
+      </template>
+      <span v-else>无日志</span>
+    </pre>
     </el-dialog>
   </div>
 </template>
@@ -27,7 +34,6 @@ import LogicFlow from '@logicflow/core'
   import { ElMessage } from 'element-plus'
   import edges from '../LFComponents/edges/index.js' 
  
-const route = useRoute()
 const router = useRouter()
 const container = ref(null)
 const lf = ref(null)
@@ -46,6 +52,31 @@ const props = defineProps({
   getSelectedDeployment: Function, // 接收父组件的方法作为属性
   setSelectedDeployment: Function, // 接收父组件的方法作为属性
 })
+
+function formatLogs(logs) {
+  console.log(logs)
+  const logLines = logs.split('\n').filter(line => line.trim() !== ''); // 过滤空行
+  const timestampReg = /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\])(.*)/;
+  const result = [];
+
+  logLines.forEach(line => {
+    const match = line.match(timestampReg);
+    if (match) {
+      const timestamp = match[1];
+      const content = match[2].trim();
+      if (timestamp) {
+        result.push({ isTimestamp: true, content: timestamp });
+      }
+      if (content) {
+        result.push({ isTimestamp: false, content });
+      }
+    } else if (line.trim()) {
+      result.push({ isTimestamp: false, content: line });
+    }
+  });
+  console.log(result)
+  return result;
+}
 
 async function initLf () {
        // 画布配置
@@ -273,14 +304,42 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .log-pre {
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  font-family: monospace;
   white-space: pre-wrap;
+  overflow-y: auto;
   max-height: 60vh;
-  overflow: auto;
+}
+
+.log-line, .timestamp-line {
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+  display: block;
+}
+
+.timestamp-line {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.log-line {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-left: 20px;
+}
+
+.timestamp {
+  color: #67C23A;
+  font-weight: 500;
 }
 
 .error-message {
   color: #f56c6c;
-  margin-top: 15px;
+  margin-top: 8px;
 }
 
 /* 根据状态设置节点颜色 */
