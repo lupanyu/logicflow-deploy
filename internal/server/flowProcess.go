@@ -174,6 +174,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			// 把每一步的日志更新到 flowExecution 中
 			taskStepData := flowExecution.NodeResults[taskStep.NodeID]
 			taskStepData.AppendTaskStep(taskStep)
+			taskStepData.Status = schema.NodeStateRunning
 			flowExecution.NodeResults[taskStep.NodeID] = taskStepData
 			mem.Save(flowExecution)
 			// 收到节点状态更新

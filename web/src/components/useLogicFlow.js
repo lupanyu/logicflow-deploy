@@ -2,11 +2,7 @@ import LogicFlow from '@logicflow/core'
 import { Menu, Snapshot, MiniMap, DndPanel } from '@logicflow/extension'
 import { nodeList } from '../components/config'
 import edges from '../LFComponents/edges/index.js'
-import { 
-  registerStart, registerEnd, 
-  registerJava, registerWeb,
-  registerJenkins, registerShell
-} from '../LFComponents/nodes/'
+import { RegisterNodes} from '../LFComponents/nodes/'
 
 // 公共配置
 const defaultOptions = {
@@ -36,13 +32,8 @@ export function useLogicFlow(containerRef, options = {}) {
     })
     
     // 注册公共组件
-    registerShell(lf.value)
-    registerStart(lf.value)
-    registerEnd(lf.value)
-    registerWeb(lf.value)
-    registerJava(lf.value)
-    registerJenkins(lf.value)
-    lf.value.register(edges)
+    RegisterNodes(lf.value)
+     lf.value.register(edges)
     lf.value.setDefaultEdgeType('myCurvedEdge')
     return lf.value
   }

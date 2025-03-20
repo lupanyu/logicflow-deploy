@@ -40,7 +40,7 @@ func (e *ShellNodeExecutor) deploy(flowExecutionID, nodeID string) error {
 	data, _ := protocol.NewMessage(protocol.MsgShellDeploy, flowExecutionID, e.properties.Host, nodeID, e.properties)
 	log.Printf("[%s] 向%s发送部署指令 参数是：%v", utils.GetCallerInfo(), e.properties.Host, data)
 
-	return e.agent.Conn.WriteJSON(data)
+	return e.agent.WriteJSON(data)
 }
 
 func NewShellNodeExecutor(data schema.ShellProperties, agent *protocol.AgentConnection) *ShellNodeExecutor {

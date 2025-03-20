@@ -8,6 +8,7 @@ import (
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -18,6 +19,13 @@ type DeploymentAgent struct {
 	agentID       string
 	wsConn        *websocket.Conn
 	stopHeartbeat chan struct{} // 心跳停止信号
+	lock          sync.RWMutex
+}
+
+func (a *DeploymentAgent) WriteJSON(msg interface{}) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	return a.wsConn.WriteJSON(msg)
 }
 
 // 在结构体初始化时增加参数传递
@@ -105,7 +113,7 @@ func (a *DeploymentAgent) sendErrorResponse(taskID, nodeID string, reason string
 		log.Printf(" [%s]创建错误响应消息失败: %v", utils.GetCallerInfo(), err)
 		return
 	}
-	a.wsConn.WriteJSON(event)
+	a.WriteJSON(event)
 }
 
 func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
@@ -131,7 +139,7 @@ func (a *DeploymentAgent) Heartbeat() {
 				log.Printf(" [%s]心跳消息创建失败: %v", utils.GetCallerInfo(), err)
 				continue
 			}
-			if err = a.wsConn.WriteJSON(heartbeat); err != nil {
+			if err = a.WriteJSON(heartbeat); err != nil {
 				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(), err)
 				return
 			} else {
@@ -158,7 +166,7 @@ func (a *DeploymentAgent) Connect() {
 		Timestamp: time.Now().UnixNano(),
 	}
 	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(), registerMsg)
-	if err = conn.WriteJSON(registerMsg); err != nil {
+	if err = a.WriteJSON(registerMsg); err != nil {
 		conn.Close()
 		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(), err)
 	}

@@ -33,7 +33,7 @@
     filterable
     :disabled="!form.nodeName"
     loading-text="加载任务列表中..."
-    :loading="loadingNodes"
+    :loading="loading"
   >
     <el-option 
       v-for="item in (nodes[form.nodeName] || []).filter(Boolean)"

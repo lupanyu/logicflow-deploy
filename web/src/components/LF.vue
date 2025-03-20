@@ -64,7 +64,7 @@
   import { nodeList } from './config' // 预置的节点
   import { ref, onMounted, nextTick  } from 'vue'
   import {useRoute} from 'vue-router'
-  import {    registerStart,registerEnd, registerJava,registerWeb,registerJenkins,registerShell  } from '../LFComponents/nodes/'
+  import {  RegisterNodes,StartNode  } from '../LFComponents/nodes/'
   // import demoData from  './demo-data.json'  
   import { ElMessage } from 'element-plus'
   import edges from '../LFComponents/edges/index.js'
@@ -157,7 +157,11 @@ async function initLf () {
       lf.value.register(edges)
       lf.value.setDefaultEdgeType('myCurvedEdge')
       // 注册节点
+      RegisterNodes(lf.value)
+      console.log(lf.value)
       registerNode()
+      console.log(lf.value)
+      lf.value.extension.dndPanel.setPatternItems(nodeList)
 
   }
   // 注册节点
@@ -173,12 +177,8 @@ async function initLf () {
     }
   };
     // 注册节点
-    registerStart(lf.value,nodeConfig)
-     registerEnd(lf.value)
-    registerWeb(lf.value)
-    registerJava(lf.value)
-    registerJenkins(lf.value)
-    registerShell(lf.value)
+     RegisterNodes(lf.value)
+
     // 注册节点到拖拽面板里
     lf.value.extension.dndPanel.setPatternItems(nodeList)
     render()

@@ -44,5 +44,5 @@ func NewWebNodeExecuter(data schema.WebProperties, agent *protocol.AgentConnecti
 
 // 向agent发送部署命令
 func (w *WebNodeExecuter) deploy() error {
-	return w.agent.Conn.WriteJSON(w.properties)
+	return w.agent.WriteJSON(w.properties)
 }
