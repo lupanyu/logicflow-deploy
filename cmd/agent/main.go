@@ -20,7 +20,6 @@ func main() {
 
 	// 初始化 agent
 	da := agent.NewDeploymentAgent(serverURL)
-	go da.WriteToConn()
 	// 建立 WebSocket 连接
 	da.Connect()
 	da.WaitForInterrupt()

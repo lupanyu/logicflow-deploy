@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"github.com/goccy/go-json"
 	"log"
 	"logicflow-deploy/internal/nodes"
@@ -22,6 +23,8 @@ type DeploymentAgent struct {
 	stopHeartbeat chan struct{} // 心跳停止信号
 	mu            sync.Mutex
 	MsgChan       chan interface{}
+	cancelWriter  context.CancelFunc // 取消函数
+	writerCtx     context.Context    // 上下文
 }
 
 func (a *DeploymentAgent) Send(msg interface{}) {
@@ -71,6 +74,10 @@ func (a *DeploymentAgent) Run() {
 	for {
 		var msg protocol.Message
 		if err := a.wsConn.ReadJSON(&msg); err != nil {
+			// 关闭所有写协程
+			if a.cancelWriter != nil {
+				a.cancelWriter()
+			}
 			// 处理连接错误类型
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				log.Printf(" [%s]连接正常关闭", utils.GetCallerInfo())
@@ -163,6 +170,9 @@ func (a *DeploymentAgent) Heartbeat() {
 	for {
 		select {
 		case <-ticker.C:
+			if a.writerCtx.Err() != nil {
+				return
+			}
 			heartbeat, err := protocol.NewMessage(protocol.MsgHeartbeat, "", a.agentID, "", "ping")
 			if err != nil {
 				log.Printf(" [%s]心跳消息创建失败: %v", utils.GetCallerInfo(), err)
@@ -177,12 +187,17 @@ func (a *DeploymentAgent) Heartbeat() {
 
 // Connect 在现有结构体下方添加
 func (a *DeploymentAgent) Connect() {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancelWriter = cancel
+	a.writerCtx = ctx
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.Dial(a.serverURL, nil)
 	if err != nil {
 		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(), err)
 	}
 	a.wsConn = conn
+	// 启动消息处理协程
+	go a.WriteToConn()
 	// 发送注册消息
 	registerMsg := protocol.Message{
 		Type:      protocol.MsgRegister,
