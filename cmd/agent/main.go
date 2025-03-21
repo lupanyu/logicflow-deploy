@@ -23,5 +23,6 @@ func main() {
 
 	// 建立 WebSocket 连接
 	da.Connect()
+	da.WaitForInterrupt()
 
 }

@@ -8,6 +8,7 @@ import (
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
 	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -19,13 +20,20 @@ type DeploymentAgent struct {
 	agentID       string
 	wsConn        *websocket.Conn
 	stopHeartbeat chan struct{} // 心跳停止信号
-	lock          sync.RWMutex
+	mu            sync.Mutex
 }
 
 func (a *DeploymentAgent) WriteJSON(msg interface{}) error {
-	a.lock.Lock()
-	defer a.lock.Unlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.wsConn.WriteJSON(msg)
+}
+
+func (a *DeploymentAgent) WaitForInterrupt() {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	<-interrupt
+	a.wsConn.Close()
 }
 
 // 在结构体初始化时增加参数传递

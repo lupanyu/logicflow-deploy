@@ -175,7 +175,7 @@ function updateEdgeAnimations(runningNodeId) {
        lf.value.openEdgeAnimation(edge.id)
     }
   })
-  // 把非活动的边关闭动画
+  把非活动的边关闭动画
   executionData.value.flowData?.edges?.forEach(edge => {
     if (!activeEdges.some(e => e.id === edge.id)) {
       lf.value.closeEdgeAnimation(edge.id)
@@ -280,7 +280,7 @@ function initEvent () {
 // 更新节点状态的新方法 - 使用LogicFlow API
 function updateNodeVisualStates() {
   if (!lf.value) return
-  let runningNodeId = null  // 添加变量声明
+  let runningNodeIds = []  // 改为数组存储多个运行节点
 
   
   executionData.value.flowData?.nodes?.forEach(node => {
@@ -290,14 +290,14 @@ function updateNodeVisualStates() {
     if (nodeModel && typeof nodeModel.updateStatus === 'function') {
       nodeModel.updateStatus(nodeStatus)
       if (nodeStatus === 'running') {
-        runningNodeId = node.id
+        runningNodeIds.push(node.id)  // 收集所有运行节点ID
       }
     }
   })
-      // 更新关联边动画
-  if (runningNodeId) {
-    updateEdgeAnimations(runningNodeId)
-  }  
+  // 更新所有运行节点的边动画
+  runningNodeIds.forEach(id => {
+    updateEdgeAnimations(id)
+  })
 }
 
 async function fetchExecutionData(flowId) {
