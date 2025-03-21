@@ -11,23 +11,23 @@ import (
 )
 
 type Storage interface {
-	Save(execution schema.FlowExecution)
-	Get(flowID string) (schema.FlowExecution, bool)
-	GetAll() []schema.FlowExecution
+	Save(execution *schema.FlowExecution)
+	Get(flowID string) (*schema.FlowExecution, bool)
+	GetAll() []*schema.FlowExecution
 }
 
 // MemoryStorage 结构体用于内存存储
 type MemoryStorage struct {
-	executions map[string]schema.FlowExecution
+	executions map[string]*schema.FlowExecution
 	// map读写锁
 	lock sync.RWMutex
 }
 
 // GetAll 方法用于获取所有的流程执行状态
-func (ms *MemoryStorage) GetAll() []schema.FlowExecution {
+func (ms *MemoryStorage) GetAll() []*schema.FlowExecution {
 	ms.lock.RLock()
 	defer ms.lock.RUnlock()
-	var executions []schema.FlowExecution
+	var executions []*schema.FlowExecution
 	for _, execution := range ms.executions {
 		executions = append(executions, execution)
 	}
@@ -37,12 +37,12 @@ func (ms *MemoryStorage) GetAll() []schema.FlowExecution {
 // NewMemoryStorage 创建一个新的 MemoryStorage 实例
 func NewMemoryStorage() Storage {
 	return &MemoryStorage{
-		executions: make(map[string]schema.FlowExecution),
+		executions: make(map[string]*schema.FlowExecution),
 	}
 }
 
 // Save 方法用于保存流程执行状态
-func (ms *MemoryStorage) Save(execution schema.FlowExecution) {
+func (ms *MemoryStorage) Save(execution *schema.FlowExecution) {
 	ms.lock.Lock()
 	ms.executions[execution.FlowID] = execution
 	ms.lock.Unlock()
@@ -50,7 +50,7 @@ func (ms *MemoryStorage) Save(execution schema.FlowExecution) {
 }
 
 // Get 方法用于获取指定 ID 的流程执行状态
-func (ms *MemoryStorage) Get(flowID string) (schema.FlowExecution, bool) {
+func (ms *MemoryStorage) Get(flowID string) (*schema.FlowExecution, bool) {
 	ms.lock.RLock()
 	execution, exists := ms.executions[flowID]
 	ms.lock.RUnlock()

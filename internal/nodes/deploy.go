@@ -69,7 +69,7 @@ func sendStatus(msgChan chan interface{}, status *schema.TaskStep) {
 
 func sendLastResult(msgChan chan interface{}, data protocol.Message) {
 	data.Timestamp = time.Now().UnixNano()
-	log.Printf("[%s]发送部署任务的最后结果：%s", utils.GetCallerInfo(), data.Payload)
+	log.Printf("[%s]发送部署任务%s的最后结果：%s", utils.GetCallerInfo(), data.NodeID, data.Payload)
 	msgChan <- data
 }
 

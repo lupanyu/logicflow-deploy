@@ -144,7 +144,7 @@ func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 		}
 	}
 
-	s.stateStorage.Save(flowExecution)
+	s.stateStorage.Save(&flowExecution)
 	return fp, nil
 }
 
@@ -160,7 +160,7 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 		// 如果存储中没有flowExecution 就创建一个,每次更新的数据都从存储中获取
 		flowExecution, ok := mem.Get(fp.FlowID)
 		if !ok {
-			flowExecution = schema.FlowExecution{
+			flowExecution = &schema.FlowExecution{
 				Name:        fp.flowData.Name,
 				FlowID:      fp.FlowID,
 				NodeResults: make(map[string]schema.NodeState),
@@ -230,10 +230,10 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 }
 
 // 执行flow
-func (fp *FlowProcessor) ExecuteFlow(server *Server) schema.FlowExecution {
+func (fp *FlowProcessor) ExecuteFlow(server *Server) *schema.FlowExecution {
 	execution, ok := server.stateStorage.Get(fp.FlowID)
 	if !ok {
-		return schema.FlowExecution{}
+		return nil
 	}
 	// 保存flowExecution
 	execution.GlobalStatus = schema.NodeStateRunning
@@ -268,7 +268,7 @@ func (fp *FlowProcessor) executeNode(node schema.Node, server *Server) {
 		return
 	}
 	log.Println(flowExecution)
-	if CheckDependency(fp.flowData, node, flowExecution) {
+	if CheckDependency(fp.flowData, node, *flowExecution) {
 		log.Println("依赖节点执行成功")
 	} else {
 		log.Println("依赖节点未执行成功，停止执行当前节点", node.ID)

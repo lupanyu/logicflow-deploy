@@ -175,12 +175,11 @@ function updateEdgeAnimations(runningNodeId) {
        lf.value.openEdgeAnimation(edge.id)
     }
   })
-  把非活动的边关闭动画
-  executionData.value.flowData?.edges?.forEach(edge => {
-    if (!activeEdges.some(e => e.id === edge.id)) {
-      lf.value.closeEdgeAnimation(edge.id)
-    }
-  })
+  // executionData.value.flowData?.edges?.forEach(edge => {
+  //   if (!activeEdges.some(e => e.id === edge.id)) {
+  //     lf.value.closeEdgeAnimation(edge.id)
+  //   }
+  // })
 }
 
 async function initLf () {
