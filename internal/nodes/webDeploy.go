@@ -2,20 +2,19 @@ package nodes
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
 )
 
 type WebDeployNode struct {
-	conn    *websocket.Conn
+	msgChan chan interface{}
 	agentID string
 }
 
-func NewWebDeployNode(agentID string, conn *websocket.Conn) *WebDeployNode {
+func NewWebDeployNode(agentID string, msgChan chan interface{}) *WebDeployNode {
 	return &WebDeployNode{
-		conn:    conn,
+		msgChan: msgChan,
 		agentID: agentID,
 	}
 }
@@ -33,7 +32,7 @@ func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 			if err != nil {
 				fmt.Printf("[%s] 生成消息异常，错误是：%v", utils.GetCallerInfo(), err.Error())
 			}
-			sendLastResult(w.conn, data)
+			sendLastResult(w.msgChan, data)
 		}
 	}()
 
@@ -67,7 +66,7 @@ func (w *WebDeployNode) Run(msg protocol.Message, task schema.WebProperties) {
 		if step.rollback != nil {
 			rollbackFn = append([]func(){step.rollback}, rollbackFn...)
 		}
-		if !handleStep(status, step.name, w.conn, step.action) {
+		if !handleStep(status, step.name, w.msgChan, step.action) {
 			return
 		}
 	}

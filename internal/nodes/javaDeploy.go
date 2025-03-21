@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"github.com/gorilla/websocket"
 	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
@@ -10,13 +9,13 @@ import (
 )
 
 type JavaDeployNode struct {
-	conn    *websocket.Conn
+	msgChan chan interface{}
 	agentID string
 }
 
-func NewJavaDeployNode(agentID string, conn *websocket.Conn) *JavaDeployNode {
+func NewJavaDeployNode(agentID string, msgChan chan interface{}) *JavaDeployNode {
 	return &JavaDeployNode{
-		conn:    conn,
+		msgChan: msgChan,
 		agentID: agentID,
 	}
 }
@@ -37,7 +36,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 				log.Printf("[%s]pdate payload err %v", utils.GetCallerInfo(), err)
 			}
 		}
-		sendLastResult(j.conn, data)
+		sendLastResult(j.msgChan, data)
 	}()
 	//
 	// 初始化状态上报
@@ -72,7 +71,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 		{
 			"健康检查",
 			func() ([]byte, error) {
-				return CheckAPPHealth(status, j.conn, task.Port, task.HealthUri, time.Duration(task.HealthCheckTimeout)*time.Second)
+				return CheckAPPHealth(status, j.msgChan, task.Port, task.HealthUri, time.Duration(task.HealthCheckTimeout)*time.Second)
 			},
 			nil,
 		},
@@ -82,7 +81,7 @@ func (j *JavaDeployNode) Run(msg protocol.Message, task schema.JavaProperties) {
 		if step.rollback != nil {
 			rollbackFn = append([]func(){step.rollback}, rollbackFn...)
 		}
-		if !handleStep(status, step.name, j.conn, step.action) {
+		if !handleStep(status, step.name, j.msgChan, step.action) {
 			return
 		}
 	}

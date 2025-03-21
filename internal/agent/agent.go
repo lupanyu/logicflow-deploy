@@ -21,28 +21,49 @@ type DeploymentAgent struct {
 	wsConn        *websocket.Conn
 	stopHeartbeat chan struct{} // 心跳停止信号
 	mu            sync.Mutex
+	MsgChan       chan interface{}
 }
 
-func (a *DeploymentAgent) WriteJSON(msg interface{}) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.wsConn.WriteJSON(msg)
+func (a *DeploymentAgent) Send(msg interface{}) {
+	a.MsgChan <- msg
 }
 
 func (a *DeploymentAgent) WaitForInterrupt() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	<-interrupt
-	a.wsConn.Close()
+	err := a.wsConn.Close()
+	if err != nil {
+		return
+	}
 }
 
-// 在结构体初始化时增加参数传递
+// NewDeploymentAgent 在结构体初始化时增加参数传递
 func NewDeploymentAgent(serverURL string) *DeploymentAgent {
-	hostname, _ := os.Hostname() // 获取主机名
+	hostname, _ := os.Hostname()
 
 	return &DeploymentAgent{
-		serverURL: serverURL,
-		agentID:   hostname, // 使用主机名作为 agentID
+		serverURL:     serverURL,
+		agentID:       hostname,                  // 使用主机名作为 agentID
+		MsgChan:       make(chan interface{}, 1), // 初始化消息通道, 容量为1
+		mu:            sync.Mutex{},
+		stopHeartbeat: make(chan struct{}),
+	}
+}
+
+func (a *DeploymentAgent) writeToConn() {
+	for msg := range a.MsgChan {
+		a.mu.Lock()
+		err := a.wsConn.WriteJSON(msg)
+		if err != nil {
+			err = a.wsConn.Close()
+			if err != nil {
+				return
+			}
+			a.reconnect()
+		}
+		a.mu.Unlock()
+
 	}
 }
 
@@ -77,7 +98,7 @@ func (a *DeploymentAgent) Run() {
 				continue
 			}
 			log.Printf(" [%s]解析Web部署消息成功: %v", utils.GetCallerInfo(), web)
-			go nodes.NewWebDeployNode(a.agentID, a.wsConn).Run(msg, web)
+			go nodes.NewWebDeployNode(a.agentID, a.MsgChan).Run(msg, web)
 		case protocol.MsgJavaDeploy:
 			var java schema.JavaProperties
 			if err := json.Unmarshal(msg.Payload, &java); err != nil {
@@ -85,7 +106,7 @@ func (a *DeploymentAgent) Run() {
 				continue
 			}
 			log.Printf(" [%s]解析Java部署消息成功: %v", utils.GetCallerInfo(), java)
-			node := nodes.NewJavaDeployNode(a.agentID, a.wsConn)
+			node := nodes.NewJavaDeployNode(a.agentID, a.MsgChan)
 			go node.Run(msg, java)
 		case protocol.MsgShellDeploy:
 			var shell schema.ShellProperties
@@ -93,7 +114,7 @@ func (a *DeploymentAgent) Run() {
 				log.Printf(" [%s]解析Shell部署消息失败: %v", utils.GetCallerInfo(), err)
 				continue
 			}
-			node := nodes.NewShellDeployNode(a.agentID, a.wsConn)
+			node := nodes.NewShellDeployNode(a.agentID, a.MsgChan)
 			// 设置默认的超时时间为10分钟
 			if shell.Timeout == 0 {
 				shell.Timeout = 600
@@ -103,7 +124,7 @@ func (a *DeploymentAgent) Run() {
 		case protocol.MsgHeartbeat:
 			log.Printf(" [%s]收到心跳检测回应消息:%v\n", utils.GetCallerInfo(), msg)
 		default:
-			log.Printf(" [%s]未知消息类型: %s", utils.GetCallerInfo(), msg.Type)
+			log.Printf(" [%s]未知消息类型: %d", utils.GetCallerInfo(), msg.Type)
 			a.sendErrorResponse(msg.FlowExecutionID, msg.NodeID, "unsupported message type")
 		}
 	}
@@ -121,7 +142,7 @@ func (a *DeploymentAgent) sendErrorResponse(taskID, nodeID string, reason string
 		log.Printf(" [%s]创建错误响应消息失败: %v", utils.GetCallerInfo(), err)
 		return
 	}
-	a.WriteJSON(event)
+	a.Send(event)
 }
 
 func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
@@ -132,7 +153,7 @@ func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
 	}
 }
 
-// 每10s发一次心跳检测
+// Heartbeat 每10s发一次心跳检测
 func (a *DeploymentAgent) Heartbeat() {
 	ticker := time.NewTicker(10 * time.Second)
 	log.Println("心跳检测启动...")
@@ -147,19 +168,14 @@ func (a *DeploymentAgent) Heartbeat() {
 				log.Printf(" [%s]心跳消息创建失败: %v", utils.GetCallerInfo(), err)
 				continue
 			}
-			if err = a.WriteJSON(heartbeat); err != nil {
-				log.Printf(" [%s]心跳发送失败: %v", utils.GetCallerInfo(), err)
-				return
-			} else {
-				log.Printf(" [%s]心跳发送成功: %v", utils.GetCallerInfo(), heartbeat)
-			}
+			a.Send(heartbeat)
 		case <-a.stopHeartbeat:
 			return
 		}
 	}
 }
 
-// 在现有结构体下方添加
+// Connect 在现有结构体下方添加
 func (a *DeploymentAgent) Connect() {
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.Dial(a.serverURL, nil)
@@ -174,10 +190,7 @@ func (a *DeploymentAgent) Connect() {
 		Timestamp: time.Now().UnixNano(),
 	}
 	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(), registerMsg)
-	if err = a.WriteJSON(registerMsg); err != nil {
-		conn.Close()
-		log.Printf("[%s]注册消息发送失败: %v", utils.GetCallerInfo(), err)
-	}
+	a.Send(registerMsg)
 
 	log.Printf(" [%s]已连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(), a.serverURL, a.agentID)
 	// 心跳上报

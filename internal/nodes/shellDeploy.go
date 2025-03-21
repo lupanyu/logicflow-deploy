@@ -1,20 +1,19 @@
 package nodes
 
 import (
-	"github.com/gorilla/websocket"
 	"log"
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 )
 
 type ShellDeployNode struct {
-	conn    *websocket.Conn
+	msgChan chan interface{}
 	agentID string
 }
 
-func NewShellDeployNode(agentID string, conn *websocket.Conn) *ShellDeployNode {
+func NewShellDeployNode(agentID string, msgChan chan interface{}) *ShellDeployNode {
 	return &ShellDeployNode{
-		conn:    conn,
+		msgChan: msgChan,
 		agentID: agentID,
 	}
 }
@@ -24,7 +23,7 @@ func (j *ShellDeployNode) Run(msg protocol.Message, task schema.ShellProperties)
 	defer func() {
 		log.Println("shell部署任务执行结束...")
 
-		sendLastResult(j.conn, data)
+		sendLastResult(j.msgChan, data)
 	}()
 	//
 	// 初始化状态上报
@@ -36,19 +35,19 @@ func (j *ShellDeployNode) Run(msg protocol.Message, task schema.ShellProperties)
 		{
 			"前置脚本",
 			func() bool {
-				return handleShellDeploy(status, "前置脚本", task.PreScriptContent, task.Timeout, j.conn)
+				return handleShellDeploy(status, "前置脚本", task.PreScriptContent, task.Timeout, j.msgChan)
 			},
 		},
 		{
 			"部署脚本",
 			func() bool {
-				return handleShellDeploy(status, "部署脚本", task.DeployScriptContent, task.Timeout, j.conn)
+				return handleShellDeploy(status, "部署脚本", task.DeployScriptContent, task.Timeout, j.msgChan)
 			},
 		},
 		{
 			"后置脚本",
 			func() bool {
-				return handleShellDeploy(status, "后置脚本", task.PostScriptContent, task.Timeout, j.conn)
+				return handleShellDeploy(status, "后置脚本", task.PostScriptContent, task.Timeout, j.msgChan)
 			},
 		},
 	}

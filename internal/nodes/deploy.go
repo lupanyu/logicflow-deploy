@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"logicflow-deploy/internal/protocol"
@@ -38,9 +37,9 @@ func Rollback(backup, new, service string) ([]byte, error) {
 	return utils.RunShell("cp -r " + backup + " " + new)
 }
 
-func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri string, timeout time.Duration) ([]byte, error) {
+func CheckAPPHealth(status *schema.TaskStep, msgChan chan interface{}, port int, uri string, timeout time.Duration) ([]byte, error) {
 	status.Setup = "健康检查"
-	defer sendStatus(conn, status)
+	defer sendStatus(msgChan, status)
 	client := http.Client{Timeout: 3 * time.Second}
 	endTime := time.Now().Add(timeout)
 
@@ -57,7 +56,7 @@ func CheckAPPHealth(status *schema.TaskStep, conn *websocket.Conn, port int, uri
 	return nil, errors.New("健康检查超时")
 }
 
-func sendStatus(conn *websocket.Conn, status *schema.TaskStep) {
+func sendStatus(msgChan chan interface{}, status *schema.TaskStep) {
 	event, err := protocol.NewMessage(protocol.MsgTaskStep, status.FlowExecutionID, status.AgentID,
 		status.NodeID, status)
 	if err != nil {
@@ -65,20 +64,20 @@ func sendStatus(conn *websocket.Conn, status *schema.TaskStep) {
 		return
 	}
 	log.Printf("[%s]发送部署任务的状态，FlowID：%s,nodeID：%s,status:%s", utils.GetCallerInfo(), event.FlowExecutionID, event.NodeID, status.Status)
-	_ = conn.WriteJSON(event)
+	msgChan <- event
 }
 
-func sendLastResult(conn *websocket.Conn, data protocol.Message) {
+func sendLastResult(msgChan chan interface{}, data protocol.Message) {
 	data.Timestamp = time.Now().UnixNano()
 	log.Printf("[%s]发送部署任务的最后结果：%s", utils.GetCallerInfo(), data.Payload)
-	_ = conn.WriteJSON(data)
+	msgChan <- data
 }
 
 // 错误处理闭包
-func handleStep(step *schema.TaskStep, stepName string, conn *websocket.Conn, fn func() ([]byte, error)) bool {
+func handleStep(step *schema.TaskStep, stepName string, msgChan chan interface{}, fn func() ([]byte, error)) bool {
 	step.Setup = stepName
 	// 统一处理结果发送
-	defer sendStatus(conn, step)
+	defer sendStatus(msgChan, step)
 
 	out, err := fn()
 	step.Output = schema.NewOutLog(schema.LevelInfo, step.Setup, string(out))
@@ -96,9 +95,9 @@ func UnpackTar(tarFile, dest string) ([]byte, error) {
 	return utils.RunShell("tar -zxf " + tarFile + " -C " + dest)
 }
 
-func handleShellDeploy(step *schema.TaskStep, stepName, shell string, timeout int, conn *websocket.Conn) bool {
+func handleShellDeploy(step *schema.TaskStep, stepName, shell string, timeout int, msgChan chan interface{}) bool {
 	step.Setup = stepName
-	defer sendStatus(conn, step)
+	defer sendStatus(msgChan, step)
 	// 执行shell脚本
 	output, err := executeShellScript(shell, time.Duration(timeout)*time.Second)
 	step.Output = schema.NewOutLog(schema.LevelInfo, step.Setup, string(output))
