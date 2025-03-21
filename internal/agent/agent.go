@@ -51,7 +51,7 @@ func NewDeploymentAgent(serverURL string) *DeploymentAgent {
 	}
 }
 
-func (a *DeploymentAgent) writeToConn() {
+func (a *DeploymentAgent) WriteToConn() {
 	for msg := range a.MsgChan {
 		a.mu.Lock()
 		err := a.wsConn.WriteJSON(msg)
