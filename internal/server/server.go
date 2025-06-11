@@ -19,8 +19,26 @@ type Server struct {
 	agents       map[string]*protocol.AgentConnection // 连接的Agent
 	stateStorage Storage
 	fpMap        map[string]*FlowProcessor // 当前在执行的flow的处理器,key 是 flowID
+	fpKeys       []string                  // 新增字段维护插入顺序
 	httpServer   *gin.Engine
 	agentsLock   sync.RWMutex
+}
+
+func (s *Server) addFlowProcessor(flowID string, fp *FlowProcessor) {
+	s.agentsLock.Lock()
+	defer s.agentsLock.Unlock()
+
+	// 维护最大长度
+	if len(s.fpKeys) >= 20 {
+		// 删除最老的元素
+		oldest := s.fpKeys[0]
+		delete(s.fpMap, oldest)
+		s.fpKeys = s.fpKeys[1:]
+	}
+
+	// 添加新元素
+	s.fpKeys = append(s.fpKeys, flowID)
+	s.fpMap[flowID] = fp
 }
 
 func NewServer() *Server {
@@ -28,6 +46,7 @@ func NewServer() *Server {
 		agents:       make(map[string]*protocol.AgentConnection),
 		stateStorage: NewMemoryStorage(),
 		fpMap:        make(map[string]*FlowProcessor),
+		fpKeys:       make([]string, 0, 31), // 初始化容量为31的切片（30+1）
 	}
 }
 func (s *Server) SetHttp(g *gin.Engine) {
@@ -38,16 +57,16 @@ func (s *Server) Start(ip string, port int) {
 }
 
 // 查看agent的状态 是否可以接受任务
-func (s *Server) HandleAgentStatus(agentID string) bool {
+func (s *Server) HandleAgentStatus(agentID string) (bool, string) {
 	agent, ok := s.agents[agentID]
 	if !ok {
-		return false
+		return false, fmt.Sprintf("agent %s not found", agentID)
 	}
 	// 检查Agent状态
 	if agent.Status == protocol.AgentReady {
-		return true
+		return true, ""
 	}
-	return false
+	return false, agent.Status.String()
 }
 
 // 根据节点ID取得connection

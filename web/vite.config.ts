@@ -12,16 +12,19 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-
+  base: './', // 关键：使用相对路径，避免打包后路径包含 `src`
+  build: {
+    assetsDir: 'assets', // 打包后静态资源存储在 `dist/assets` 目录
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name]-[hash][ext]', // 示例：生成 `assets/icon-abc123.svg`
+      },
+    },
+  },
   plugins: [
     vue(),
     tailwindcss(),
     vueDevTools(),
-    // createSvgIconsPlugin({
-    //   //将svg图标放入src文件下面中的assets下面中的icons文件夹中
-    //     iconDirs: [path.resolve(process.cwd(), "src/assets/icons")],
-    //     symbolId: "icon-[dir]-[name]",
-    //   }),
   ],
   resolve: {
     alias: {

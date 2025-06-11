@@ -9,3 +9,7 @@ const (
 	TaskTimeout    agentStatus = "TaskTimeout"
 	TaskCompleted  agentStatus = "TaskCompleted"
 )
+
+func (a agentStatus) String() string {
+	return string(a)
+}

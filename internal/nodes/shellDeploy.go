@@ -22,7 +22,6 @@ func (j *ShellDeployNode) Run(msg protocol.Message, task schema.ShellProperties)
 	data, _ := protocol.NewMessage(protocol.MsgTaskResult, msg.FlowExecutionID, j.agentID, msg.NodeID, schema.NodeStateSuccess)
 	defer func() {
 		log.Println("shell部署任务执行结束...")
-
 		sendLastResult(j.msgChan, data)
 	}()
 	//

@@ -68,8 +68,10 @@ func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 			if !ok {
 				return nil, fmt.Errorf("java节点%v未找到AgentID: %s", data, data.Host)
 			}
-			if !s.HandleAgentStatus(data.Host) {
-				return nil, fmt.Errorf("AgentID: %s 状态异常", data.Host)
+
+			ready, str := s.HandleAgentStatus(data.Host)
+			if !ready {
+				return nil, fmt.Errorf("AgentID [%s]状态异常:%s", data.Host, str)
 			}
 			fp.RegisterExecutor(node.ID, nodes.NewJavaNodeExecutor(data, host))
 		case "build":
@@ -124,7 +126,7 @@ func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 		}
 	}
 	// 把fp添加到server的fpMap中
-	s.fpMap[fp.FlowID] = fp
+	s.addFlowProcessor(fp.FlowID, fp)
 	// 初始化存储数据
 	flowExecution := schema.FlowExecution{
 		FlowID:       fp.FlowID,
@@ -271,7 +273,7 @@ func (fp *FlowProcessor) executeNode(node schema.Node, server *Server) {
 	if CheckDependency(fp.flowData, node, *flowExecution) {
 		log.Println("依赖节点执行成功")
 	} else {
-		log.Println("依赖节点未执行成功，停止执行当前节点", node.ID)
+		log.Println("依赖节点未执行成功，停止执行当前节点", node.ID, node.Text)
 		return
 	}
 

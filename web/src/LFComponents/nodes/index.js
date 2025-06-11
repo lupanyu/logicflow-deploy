@@ -23,13 +23,13 @@ export const RegisterNodes = (lf) => {
 
 }
 
-function registerEnd(lf){BaseNode(lf, 'end', '/src/assets/icons/end.svg')} 
+function registerEnd(lf){BaseNode(lf, 'end', '@/assets/icons/end.svg')}
 // function registerStart(lf){BaseNode(lf, 'start', '/src/assets/icons/start.svg')}
-function registerStart(lf){BaseNode(lf,'start', '/src/assets/icons/start.svg')}
-function registerWeb(lf){BaseNode(lf, 'web', '/src/assets/icons/web2.svg')}
-function registerJava(lf){BaseNode(lf, 'java', '/src/assets/icons/application.svg')}
+function registerStart(lf){BaseNode(lf,'start', '@/assets/icons/start.svg')}
+function registerWeb(lf){BaseNode(lf, 'web', '@/assets/icons/web2.svg')}
+function registerJava(lf){BaseNode(lf, 'java', '@/assets/icons/application.svg')}
 // jenkins节点
-function registerJenkins(lf){BaseNode(lf, 'jenkins', '/src/assets/icons/jenkins.svg')}
+function registerJenkins(lf){BaseNode(lf, 'jenkins', '@/assets/icons/jenkins.svg')}
 // shell 节点
-function registerShell(lf){BaseNode(lf, 'shell', '/src/assets/icons/shell.svg')}
+function registerShell(lf){BaseNode(lf, 'shell', '@/assets/icons/shell.svg')}
 export { registerStart, registerEnd,registerJava,registerWeb,registerJenkins,registerShell,StartNode}
