@@ -238,7 +238,7 @@ func (a *DeploymentAgent) reconnect() {
 	defer a.mu.Unlock()
 	// ... 原有重连代码基础上添加日志 ...
 	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo())
-	retry := 0
+	retry := 1
 	// 添加重试控制
 	for {
 
@@ -258,6 +258,7 @@ func (a *DeploymentAgent) reconnect() {
 		if err == nil {
 			a.wsConn = conn
 			log.Printf(" [%s]重连成功", utils.GetCallerInfo())
+			go a.WriteToConn()
 			a.sendRegister()
 			go a.Run()       // 重启消息监听循环
 			go a.Heartbeat() // 重启心跳
