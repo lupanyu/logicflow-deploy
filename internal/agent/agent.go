@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"github.com/goccy/go-json"
 	"log"
 	"logicflow-deploy/internal/nodes"
@@ -28,6 +29,7 @@ type DeploymentAgent struct {
 }
 
 func (a *DeploymentAgent) Send(msg interface{}) {
+	log.Printf(" [%s]发送消息: %+v", utils.GetCallerInfo(), msg)
 	a.MsgChan <- msg
 }
 
@@ -167,16 +169,17 @@ func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
 func (a *DeploymentAgent) Heartbeat() {
 	ticker := time.NewTicker(10 * time.Second)
 	log.Println("心跳检测启动...")
+	jump := 0
 	// 在退出时停止心跳
-
 	defer ticker.Stop()
 	for {
+		jump++
 		select {
 		case <-ticker.C:
 			if a.writerCtx.Err() != nil {
 				return
 			}
-			heartbeat, err := protocol.NewMessage(protocol.MsgHeartbeat, "", a.agentID, "", "ping")
+			heartbeat, err := protocol.NewMessage(protocol.MsgHeartbeat, "", a.agentID, fmt.Sprintf("%d", jump), "ping")
 			if err != nil {
 				log.Printf(" [%s]心跳消息创建失败: %v", utils.GetCallerInfo(), err)
 				continue
