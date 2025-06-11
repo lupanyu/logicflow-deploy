@@ -88,7 +88,6 @@ func (a *DeploymentAgent) Run() {
 				return
 			}
 			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
-
 		}
 		// 验证消息格式
 		if msg.Payload == nil {
@@ -247,17 +246,22 @@ func (a *DeploymentAgent) reconnect() {
 	// ... 原有重连代码基础上添加日志 ...
 	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo())
 	// 添加重试控制
-	for retry := 0; retry < 5; retry++ {
+	for retry := 0; retry < 6; retry++ {
+		// 添加指数退避等待
+		waitTime := time.Duration(retry*retry) * time.Second
+		log.Printf("第%d次重试，等待%.0f秒...", retry+1, waitTime.Seconds())
+		time.Sleep(waitTime)
+
 		if a.wsConn != nil {
 			a.wsConn.Close()
 		}
 
-		if err := a.Connect(); err == nil {
+		if err := a.connectInternal(true); err == nil {
 			return
-		}
+		} else {
+			log.Printf("连接失败: %v", err)
 
-		timeout := time.Duration(retry*retry) * time.Second // 指数退避
-		time.Sleep(timeout)
+		}
 	}
-	a.connectInternal(true)
+	log.Fatal("超过最大重试次数，终止连接")
 }
