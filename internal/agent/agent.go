@@ -253,18 +253,13 @@ func (a *DeploymentAgent) reconnect() {
 		if waitTime > 30*time.Second {
 			waitTime = 30 * time.Second
 		}
-		log.Printf(" [%s]等待%.0f秒后尝试第%d次重连...", utils.GetCallerInfo(), waitTime.Seconds(), retry+1)
-		time.Sleep(time.Second * 30)
+		log.Printf(" [%s]等待%.0f秒后尝试第%d次重连...", utils.GetCallerInfo(), waitTime.Seconds(), retry)
+		time.Sleep(waitTime)
 
 		// 创建新连接
-		conn, _, err := websocket.DefaultDialer.Dial(a.serverURL, nil)
+		err := a.Connect()
 		if err == nil {
-			a.wsConn = conn
-			log.Printf(" [%s]重连成功", utils.GetCallerInfo())
-			go a.WriteToConn()
-			a.sendRegister()
-			go a.Run()       // 重启消息监听循环
-			go a.Heartbeat() // 重启心跳
+			log.Printf(" [%s]成功重连服务器", utils.GetCallerInfo())
 			return
 		}
 		log.Printf(" [%s]连接失败: %v", utils.GetCallerInfo(), err)
