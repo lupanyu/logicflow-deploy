@@ -85,9 +85,10 @@ func (a *DeploymentAgent) Run() {
 			// 处理连接错误类型
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				log.Printf(" [%s]连接正常关闭", utils.GetCallerInfo())
-				return
+
 			}
 			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
+			a.reconnect()
 		}
 		// 验证消息格式
 		if msg.Payload == nil {
@@ -245,13 +246,12 @@ func (a *DeploymentAgent) reconnect() {
 	defer a.mu.Unlock()
 	// ... 原有重连代码基础上添加日志 ...
 	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo())
+	retry := 0
 	// 添加重试控制
-	for retry := 0; retry < 6; retry++ {
+	for {
 		// 添加指数退避等待
-		waitTime := time.Duration(retry*retry) * time.Second
-		log.Printf("第%d次重试，等待%.0f秒...", retry+1, waitTime.Seconds())
-		time.Sleep(waitTime)
-
+		log.Printf("第%d次重试，等待...", retry+1)
+		time.Sleep(time.Second * 30)
 		if a.wsConn != nil {
 			a.wsConn.Close()
 		}
@@ -263,5 +263,4 @@ func (a *DeploymentAgent) reconnect() {
 
 		}
 	}
-	log.Fatal("超过最大重试次数，终止连接")
 }
