@@ -88,7 +88,8 @@ func (a *DeploymentAgent) Run() {
 
 			}
 			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
-			a.reconnect()
+			go a.reconnect()
+			return // 退出当前协程
 		}
 		// 验证消息格式
 		if msg.Payload == nil {
@@ -187,7 +188,8 @@ func (a *DeploymentAgent) Heartbeat() {
 	}
 }
 
-func (a *DeploymentAgent) connectInternal(isReconnect bool) error {
+// Connect 在现有结构体下方添加
+func (a *DeploymentAgent) Connect() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -208,13 +210,8 @@ func (a *DeploymentAgent) connectInternal(isReconnect bool) error {
 		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(), err)
 		return err
 	}
-
 	a.wsConn = conn
-	logPrefix := ""
-	if isReconnect {
-		logPrefix = "重新"
-	}
-	log.Printf(" [%s]%s连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(), logPrefix, a.serverURL, a.agentID)
+	log.Printf(" [%s]连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(), a.serverURL, a.agentID)
 
 	// 公共初始化逻辑
 	go a.WriteToConn()
@@ -222,11 +219,6 @@ func (a *DeploymentAgent) connectInternal(isReconnect bool) error {
 	go a.Heartbeat()
 	go a.Run()
 	return nil
-}
-
-// Connect 在现有结构体下方添加
-func (a *DeploymentAgent) Connect() error {
-	return a.connectInternal(false)
 }
 
 // 提取注册消息发送逻辑
@@ -249,18 +241,29 @@ func (a *DeploymentAgent) reconnect() {
 	retry := 0
 	// 添加重试控制
 	for {
-		// 添加指数退避等待
-		log.Printf("第%d次重试，等待...", retry+1)
-		time.Sleep(time.Second * 30)
+
 		if a.wsConn != nil {
 			a.wsConn.Close()
 		}
-
-		if err := a.connectInternal(true); err == nil {
-			return
-		} else {
-			log.Printf("连接失败: %v", err)
-
+		// 指数退避策略
+		waitTime := time.Duration(retry*retry) * time.Second
+		if waitTime > 30*time.Second {
+			waitTime = 30 * time.Second
 		}
+		log.Printf(" [%s]等待%.0f秒后尝试第%d次重连...", utils.GetCallerInfo(), waitTime.Seconds(), retry+1)
+		time.Sleep(time.Second * 30)
+
+		// 创建新连接
+		conn, _, err := websocket.DefaultDialer.Dial(a.serverURL, nil)
+		if err == nil {
+			a.wsConn = conn
+			log.Printf(" [%s]重连成功", utils.GetCallerInfo())
+			a.sendRegister()
+			go a.Run()       // 重启消息监听循环
+			go a.Heartbeat() // 重启心跳
+			return
+		}
+		log.Printf(" [%s]连接失败: %v", utils.GetCallerInfo(), err)
+		retry++
 	}
 }
