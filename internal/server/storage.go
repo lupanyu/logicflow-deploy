@@ -19,6 +19,8 @@ type Storage interface {
 // MemoryStorage 结构体用于内存存储
 type MemoryStorage struct {
 	executions map[string]*schema.FlowExecution
+	feKeys     []string
+	maxNum     int
 	// map读写锁
 	lock sync.RWMutex
 }
@@ -35,8 +37,10 @@ func (ms *MemoryStorage) GetAll() []*schema.FlowExecution {
 }
 
 // NewMemoryStorage 创建一个新的 MemoryStorage 实例
-func NewMemoryStorage() Storage {
+func NewMemoryStorage(maxNum int) Storage {
 	return &MemoryStorage{
+		feKeys:     make([]string, 0, maxNum+1),
+		maxNum:     maxNum,
 		executions: make(map[string]*schema.FlowExecution),
 	}
 }
@@ -45,6 +49,15 @@ func NewMemoryStorage() Storage {
 func (ms *MemoryStorage) Save(execution *schema.FlowExecution) {
 	ms.lock.Lock()
 	ms.executions[execution.FlowID] = execution
+	ms.feKeys = append(ms.feKeys, execution.FlowID)
+	// 清理过期处理器（修复条件判断）
+	if len(ms.feKeys) > ms.maxNum { // 改为>=30确保31个时触发清理
+		oldest := ms.feKeys[0]
+		if _, exists := ms.executions[oldest]; exists {
+			delete(ms.executions, oldest)
+		}
+		ms.feKeys = ms.feKeys[1:] // 使用切片操作保持顺序
+	}
 	ms.lock.Unlock()
 	log.Printf(" [%s]Saved flow execution with ID: %s", utils.GetCallerInfo(), execution.FlowID)
 }

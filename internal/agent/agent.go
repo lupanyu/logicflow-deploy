@@ -18,14 +18,19 @@ import (
 )
 
 type DeploymentAgent struct {
-	serverURL     string
-	agentID       string
-	wsConn        *websocket.Conn
-	stopHeartbeat chan struct{} // 心跳停止信号
-	mu            sync.Mutex
-	MsgChan       chan interface{}
-	cancelWriter  context.CancelFunc // 取消函数
-	writerCtx     context.Context    // 上下文
+	serverURL    string
+	agentID      string
+	wsConn       *websocket.Conn
+	Done         chan struct{} //退出信号
+	mu           sync.Mutex
+	MsgChan      chan interface{}
+	cancelWriter context.CancelFunc // 取消函数
+	writerCtx    context.Context    // 上下文
+}
+
+func (a *DeploymentAgent) Cleanup() {
+	a.cancelWriter()
+	a.wsConn.Close()
 }
 
 func (a *DeploymentAgent) Send(msg interface{}) {
@@ -48,11 +53,11 @@ func NewDeploymentAgent(serverURL string) *DeploymentAgent {
 	hostname, _ := os.Hostname()
 
 	return &DeploymentAgent{
-		serverURL:     serverURL,
-		agentID:       hostname,                  // 使用主机名作为 agentID
-		MsgChan:       make(chan interface{}, 1), // 初始化消息通道, 容量为1
-		mu:            sync.Mutex{},
-		stopHeartbeat: make(chan struct{}),
+		serverURL: serverURL,
+		agentID:   hostname,                  // 使用主机名作为 agentID
+		MsgChan:   make(chan interface{}, 1), // 初始化消息通道, 容量为1
+		mu:        sync.Mutex{},
+		Done:      make(chan struct{}),
 	}
 }
 
@@ -66,7 +71,6 @@ func (a *DeploymentAgent) WriteToConn() {
 
 			if err != nil {
 				log.Printf("写入失败: %v", err)
-				a.reconnect()
 				return // 退出当前写协程
 			}
 
@@ -76,6 +80,7 @@ func (a *DeploymentAgent) WriteToConn() {
 	}
 }
 
+// Run 启动消息处器
 func (a *DeploymentAgent) Run() {
 	for {
 		var msg protocol.Message
@@ -90,7 +95,6 @@ func (a *DeploymentAgent) Run() {
 
 			}
 			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
-			go a.reconnect()
 			return // 退出当前协程
 		}
 		// 验证消息格式
@@ -167,6 +171,7 @@ func (a *DeploymentAgent) handleRollback(rollbackFn []func()) {
 
 // Heartbeat 每10s发一次心跳检测
 func (a *DeploymentAgent) Heartbeat() {
+	a.sendRegister()
 	ticker := time.NewTicker(10 * time.Second)
 	log.Println("心跳检测启动...")
 	jump := 0
@@ -185,22 +190,13 @@ func (a *DeploymentAgent) Heartbeat() {
 				continue
 			}
 			a.Send(heartbeat)
-		case <-a.stopHeartbeat:
-			return
+
 		}
 	}
 }
 
 // Connect 在现有结构体下方添加
 func (a *DeploymentAgent) Connect() error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	// 清理旧连接
-	if a.wsConn != nil {
-		_ = a.wsConn.Close()
-		a.cancelWriter()
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancelWriter = cancel
@@ -208,6 +204,8 @@ func (a *DeploymentAgent) Connect() error {
 
 	// 统一连接逻辑
 	dialer := websocket.Dialer{}
+	dialer.HandshakeTimeout = 15 * time.Second // 连接超时时间
+	log.Printf(" [%s]尝试连接服务器 %s [AgentID: %s]", utils.GetCallerInfo(), a.serverURL, a.agentID)
 	conn, _, err := dialer.Dial(a.serverURL, nil)
 	if err != nil {
 		log.Printf("[%s] 连接服务器失败: %v", utils.GetCallerInfo(), err)
@@ -218,7 +216,6 @@ func (a *DeploymentAgent) Connect() error {
 
 	// 公共初始化逻辑
 	go a.WriteToConn()
-	a.sendRegister()
 	go a.Heartbeat()
 	go a.Run()
 	return nil
@@ -233,36 +230,4 @@ func (a *DeploymentAgent) sendRegister() {
 	}
 	log.Printf(" [%s]发送注册消息: %+v", utils.GetCallerInfo(), registerMsg)
 	a.Send(registerMsg)
-}
-
-// 在结构体中添加重连逻辑
-func (a *DeploymentAgent) reconnect() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	// ... 原有重连代码基础上添加日志 ...
-	log.Printf(" [%s]尝试重新连接服务器...", utils.GetCallerInfo())
-	retry := 1
-	// 添加重试控制
-	for {
-
-		if a.wsConn != nil {
-			a.wsConn.Close()
-		}
-		// 指数退避策略
-		waitTime := time.Duration(retry*retry) * time.Second
-		if waitTime > 30*time.Second {
-			waitTime = 30 * time.Second
-		}
-		log.Printf(" [%s]等待%.0f秒后尝试第%d次重连...", utils.GetCallerInfo(), waitTime.Seconds(), retry)
-		time.Sleep(waitTime)
-
-		// 创建新连接
-		err := a.Connect()
-		if err == nil {
-			log.Printf(" [%s]成功重连服务器", utils.GetCallerInfo())
-			return
-		}
-		log.Printf(" [%s]连接失败: %v", utils.GetCallerInfo(), err)
-		retry++
-	}
 }
