@@ -30,7 +30,7 @@ func (s *Server) addFlowProcessor(flowID string, fp *FlowProcessor) {
 func NewServer() *Server {
 	return &Server{
 		agents:       make(map[string]*protocol.AgentConnection),
-		stateStorage: NewMemoryStorage(20),
+		stateStorage: NewMemoryStorage(20, "flow_storage.json"),
 		fpMap:        make(map[string]*FlowProcessor),
 	}
 }
@@ -39,6 +39,11 @@ func (s *Server) SetHttp(g *gin.Engine) {
 }
 func (s *Server) Start(ip string, port int) {
 	_ = s.httpServer.Run(fmt.Sprintf("%s:%d", ip, port))
+}
+
+// GetStorage 存储访问方法
+func (s *Server) GetStorage() Storage {
+	return s.stateStorage
 }
 
 // 查看agent的状态 是否可以接受任务

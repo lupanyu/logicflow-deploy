@@ -37,19 +37,52 @@ func (ms *MemoryStorage) GetAll() []*schema.FlowExecution {
 }
 
 // NewMemoryStorage 创建一个新的 MemoryStorage 实例
-func NewMemoryStorage(maxNum int) Storage {
-	return &MemoryStorage{
+func NewMemoryStorage(maxNum int, jsonFile string) Storage {
+	ms := &MemoryStorage{
 		feKeys:     make([]string, 0, maxNum+1),
 		maxNum:     maxNum,
 		executions: make(map[string]*schema.FlowExecution),
 	}
+	// 新增文件加载逻辑
+	if file, err := os.Open(jsonFile); err == nil {
+		defer file.Close()
+		var data map[string]*schema.FlowExecution
+		if err := json.NewDecoder(file).Decode(&data); err == nil {
+			ms.lock.Lock()
+			for flowID, execution := range data {
+				ms.executions[flowID] = execution
+				ms.feKeys = append(ms.feKeys, flowID)
+				// 保持最大数量限制
+				if len(ms.feKeys) > maxNum {
+					oldest := ms.feKeys[0]
+					delete(ms.executions, oldest)
+					ms.feKeys = ms.feKeys[1:]
+				}
+			}
+			ms.lock.Unlock()
+			log.Printf("Loaded %d executions from storage file", len(data))
+		}
+	}
+
+	return ms
 }
 
 // Save 方法用于保存流程执行状态
 func (ms *MemoryStorage) Save(execution *schema.FlowExecution) {
 	ms.lock.Lock()
+	defer ms.lock.Unlock()
 	ms.executions[execution.FlowID] = execution
-	ms.feKeys = append(ms.feKeys, execution.FlowID)
+	isExist := false
+	// 如果不存在当前key,则添加到切片中
+	for _, key := range ms.feKeys {
+		if key == execution.FlowID {
+			isExist = true
+			break
+		}
+	}
+	if !isExist {
+		ms.feKeys = append(ms.feKeys, execution.FlowID)
+	}
 	// 清理过期处理器（修复条件判断）
 	if len(ms.feKeys) > ms.maxNum { // 改为>=30确保31个时触发清理
 		oldest := ms.feKeys[0]
@@ -58,7 +91,6 @@ func (ms *MemoryStorage) Save(execution *schema.FlowExecution) {
 		}
 		ms.feKeys = ms.feKeys[1:] // 使用切片操作保持顺序
 	}
-	ms.lock.Unlock()
 	log.Printf(" [%s]Saved flow execution with ID: %s", utils.GetCallerInfo(), execution.FlowID)
 }
 
@@ -146,4 +178,20 @@ func loadExecutionsFromDirectory(path string) (map[string]schema.FlowExecution, 
 		executions[s.FlowID] = s
 	}
 	return executions, nil
+}
+
+// 新增内存存储转文件存储的方法
+func SaveMemStorageToFile(ms *MemoryStorage, path string) error {
+	ms.lock.RLock()
+	defer ms.lock.RUnlock()
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(ms.executions)
 }

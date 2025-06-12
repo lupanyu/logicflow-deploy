@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"log"
 	"logicflow-deploy/internal/middleware"
 	"logicflow-deploy/internal/routes"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/server"
 	"logicflow-deploy/internal/utils"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func HandleFlowSave(c *gin.Context) {
@@ -37,5 +41,20 @@ func main() {
 	r.Use(middleware.CorsMiddleware())
 	routes.RegisterAPIRoutes(r, s)
 	s.SetHttp(r)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("正在保存流程执行数据...")
+		// 实际保存逻辑需要根据存储类型实现
+		if ms, ok := s.GetStorage().(*server.MemoryStorage); ok {
+			if err := server.SaveMemStorageToFile(ms, "flow_storage.json"); err != nil {
+				log.Printf("保存失败: %v", err)
+			}
+		}
+		os.Exit(0)
+	}()
+
 	s.Start("0.0.0.0", 8080)
 }

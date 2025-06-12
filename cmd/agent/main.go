@@ -22,7 +22,12 @@ func main() {
 		// 初始化 agent
 		da := agent.NewDeploymentAgent(serverURL)
 		// 建立 WebSocket 连接
-		_ = da.Connect()
+		err := da.Connect()
+		if err != nil {
+			log.Println("连接失败，将在10秒后重试...")
+			time.Sleep(10 * time.Second)
+			continue
+		}
 		retry := 0
 		select {
 		case <-da.Done:

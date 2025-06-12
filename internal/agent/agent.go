@@ -95,6 +95,7 @@ func (a *DeploymentAgent) Run() {
 
 			}
 			log.Printf(" [%s]连接异常: %v", utils.GetCallerInfo(), err)
+			a.Done <- struct{}{}
 			return // 退出当前协程
 		}
 		// 验证消息格式
