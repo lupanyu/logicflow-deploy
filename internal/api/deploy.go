@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 	"logicflow-deploy/internal/schema"
@@ -41,4 +42,23 @@ func StartDeploy(ctx *gin.Context, s *server.Server) {
 
 func CancelDeploy(ctx *gin.Context) {
 
+}
+
+func StopDeploy(ctx *gin.Context, s *server.Server) {
+	flowID := ctx.Param("id")
+	flowExecution, ok := s.GetFlowExecution(flowID)
+	if !ok {
+		ctx.JSON(404, gin.H{"error": "Flow execution not found"})
+	}
+	fp := s.GetFlowProcessor(flowID)
+	if fp == nil {
+		ctx.JSON(404, gin.H{"error": fmt.Sprintf("没找到正在执行的:%s", flowID)})
+		return
+	}
+	ok, msg := fp.Cancel(s)
+	if !ok {
+		ctx.JSON(403, gin.H{"error": msg})
+		return
+	}
+	ctx.JSON(200, flowExecution)
 }

@@ -11,6 +11,7 @@ import (
 	"logicflow-deploy/internal/protocol"
 	"logicflow-deploy/internal/schema"
 	"logicflow-deploy/internal/utils"
+	"sync"
 )
 
 // FlowProcessor 是流程处理器的数据结构
@@ -20,20 +21,37 @@ type FlowProcessor struct {
 	executors      map[string]nodes.NodeExecutor
 	taskStepChan   chan schema.TaskStep  // 把节点里的每个步骤的状态发送到这里
 	taskResultChan chan protocol.Message // 把每个node节点最终的状态发送到这里 payload是NodeStatus
+	isClosed       bool
+	closeLock      sync.Mutex
 	ctx            context.Context
 	cancel         context.CancelFunc
 }
 
-func (fp *FlowProcessor) Cancel() {
+func (fp *FlowProcessor) Cancel(server *Server) (bool, string) {
 	log.Printf(" [%s]终止执行flow: %s", utils.GetCallerInfo(), fp.FlowID)
 	// 终止所有的executor,TODO
-	// 终止所有的taskStepChan
-	close(fp.taskStepChan)
-	// 更新最终状态为终止 这个在外层做 TODO
-	// 终止所有的taskResultChan
-	close(fp.taskResultChan)
 
+	// 如果当前执行的节点是第一个节点,则终止当前节点，并且终止当前的流程。 只是不让其进行下一步的任务，对当前的任务不做任何处理
+	startNode := getStartNode(fp.flowData)
+	firstNode := NextNodes(fp.flowData, startNode.ID) // 除了开始节点的第一个节点
+	firstNodeId := ""
+	if len(firstNode) == 1 {
+		a := firstNode[0]
+		firstNodeId = a.ID
+		// 终止当前的流程
+	}
+	executor, ok := server.GetFlowExecution(fp.FlowID)
+	if ok {
+		// 非running状态不允许终止
+		if executor.NodeResults[firstNodeId].Status != schema.NodeStateRunning {
+			return false, "当前状态不能被终止,只有第一个节点完成前才能终止执行"
+		}
+	} else {
+		return false, "当前流程不存在"
+	}
+	// 终止当前的流程
 	fp.cancel()
+	return true, "停止成功"
 }
 
 // 初始化处理器
@@ -117,6 +135,10 @@ func NewFlowProcessor(flow schema.Template, s *Server) (*FlowProcessor, error) {
 			if !ok {
 				return nil, fmt.Errorf("shell节点%v未找到AgentID: %s", data, data.Host)
 			}
+			ready, str := s.HandleAgentStatus(data.Host)
+			if !ready {
+				return nil, fmt.Errorf("AgentID [%s]状态异常:%s", data.Host, str)
+			}
 			fp.RegisterExecutor(node.ID, nodes.NewShellNodeExecutor(data, host))
 		case "end":
 			fp.RegisterExecutor(node.ID, nodes.NewEndNodeExecutor(node))
@@ -157,7 +179,7 @@ func generateFlowID() string {
 
 // // 接收statusChan中的数据 并将数据存到Storage中
 func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
-
+	defer s.RemoveFlowProcessor(fp.FlowID)
 	for {
 		// 如果存储中没有flowExecution 就创建一个,每次更新的数据都从存储中获取
 		flowExecution, ok := mem.Get(fp.FlowID)
@@ -170,6 +192,21 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 		}
 		log.Println("waiting task status info...")
 		select {
+		case <-fp.ctx.Done():
+			log.Printf(" [%s]收到终止信号,终止flow: %s", utils.GetCallerInfo(), fp.FlowID)
+			flowExecution.GlobalStatus = schema.NodeStateCancelled
+			now := carbon.Now()
+			flowExecution.EndTime = &now
+			mem.Save(flowExecution)
+			fp.closeLock.Lock()
+
+			if !fp.isClosed {
+				close(fp.taskStepChan)
+				close(fp.taskResultChan)
+				fp.isClosed = true
+			}
+			fp.closeLock.Unlock()
+			return
 		// 收到状态更新
 		case taskStep := <-fp.taskStepChan:
 			log.Printf("收到 taskstep: %v", taskStep)
@@ -198,24 +235,25 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 			// 节点执行成功，更新状态
 			flowExecution.NodeResults[state.NodeID] = nodeState
 			mem.Save(flowExecution)
-			if nodeStatus == schema.NodeStateFailed || nodeStatus == schema.NodeStateTimeout || nodeStatus == schema.NodeStateRollbacked {
+			if nodeStatus == schema.NodeStateFailed || nodeStatus == schema.NodeStateTimeout || nodeStatus == schema.NodeStateRollbacked || nodeStatus == schema.NodeStateCancelled {
 				flowExecution.GlobalStatus = nodeStatus
 				flowExecution.EndTime = &now
 				flowExecution.CalculateDuration()
 				log.Printf(" [%s]flow: %s 执行失败,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 				mem.Save(flowExecution)
-				break
+				return
 			}
 			// 如果当前节点是结果是成功的，触发下一个节点的执行
 			if nodeStatus == schema.NodeStateSuccess {
 				nextNodes := NextNodes(flowExecution.FlowData, state.NodeID)
+				// 如果没有下一个节点了，更新全局状态为成功并结束流程
 				if len(nextNodes) == 0 {
 					log.Printf(" [%s]flow: %s 没有剩余要执行的节点,结束", utils.GetCallerInfo(), flowExecution.FlowID)
 					flowExecution.GlobalStatus = schema.NodeStateSuccess
 					flowExecution.EndTime = &now
 					flowExecution.CalculateDuration()
 					mem.Save(flowExecution)
-					break
+					return
 				}
 				log.Printf(" [%s]节点%s执行成功，下一个节点是: %v", utils.GetCallerInfo(), state.NodeID, nextNodes)
 				for _, nextNode := range nextNodes {
@@ -224,11 +262,20 @@ func (fp *FlowProcessor) statusFactory(mem Storage, s *Server) {
 				}
 			} else {
 				log.Printf(" [%s]节点%s执行失败，停止执行flowID:%s", utils.GetCallerInfo(), state.NodeID, state.FlowExecutionID)
-				break
+
 			}
 
 		}
 	}
+}
+
+func GetStartNode(flowData schema.Template) schema.Node {
+	for _, node := range flowData.Nodes {
+		if node.Type == "start" {
+			return node
+		}
+	}
+	return schema.Node{}
 }
 
 // 执行flow
@@ -246,12 +293,10 @@ func (fp *FlowProcessor) ExecuteFlow(server *Server) *schema.FlowExecution {
 	// 启动状态工厂
 	go fp.statusFactory(server.stateStorage, server)
 	// 查找开始节点
-	var startNode schema.Node
-	for _, node := range fp.flowData.Nodes {
-		if node.Type == "start" {
-			startNode = node
-			break
-		}
+	startNode := GetStartNode(fp.flowData)
+	if startNode.ID == "" {
+		log.Printf(" [%s]未找到开始节点", utils.GetCallerInfo())
+		return nil
 	}
 	log.Printf("[%s] 执行节点:%v", utils.GetCallerInfo(), startNode.ID)
 
@@ -284,7 +329,6 @@ func (fp *FlowProcessor) executeNode(node schema.Node, server *Server) {
 	}
 	log.Printf("[%s]执行节点:%s", utils.GetCallerInfo(), node.ID)
 	executor.Execute(fp.FlowID, node.ID, fp.taskStepChan, fp.taskResultChan)
-
 }
 
 // 注册节点处理器

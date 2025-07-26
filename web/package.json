@@ -12,12 +12,13 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
     "@logicflow/core": "^2.0.11",
     "@logicflow/extension": "^2.0.14",
     "@tailwindcss/vite": "^4.0.12",
     "autoprefixer": "^10.4.21",
     "dayjs": "^1.11.13",
-    "element-plus": "^2.9.1",
+    "element-plus": "^2.10.4",
     "logicflow": "^1.0.1",
     "lucide-vue-next": "^0.479.0",
     "postcss": "^8.5.3",

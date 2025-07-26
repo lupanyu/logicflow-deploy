@@ -30,13 +30,13 @@
               <HistoryIcon class="h-4 w-4 inline mr-1" />
               History
             </button>
-            <button 
+            <!-- <button 
             @click="switchTab('working')" 
               :class="['px-3 py-2 rounded-md text-sm font-medium', 
                 activeTab === 'working' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100']">
               <GitBranchIcon class="h-4 w-4 inline mr-1" />
               Working
-            </button>
+            </button> -->
           </nav>
         </div>
       </div>
@@ -191,7 +191,7 @@
               <p class="text-sm text-gray-500">Started At</p>
               <p class="font-medium">{{ selectedDeployment.startTime }}</p>
             </div>
-  
+
             <div v-if="  selectedDeployment.env">
               <p class="text-sm text-gray-500">Env</p>
               <p class="font-medium">{{  selectedDeployment.env }}</p>
@@ -203,6 +203,16 @@
             <div v-if="selectedDeployment.duration">
               <p class="text-sm text-gray-500">SpendTime</p>
               <p class="font-medium">{{selectedDeployment.duration }}</p>
+            </div>
+            <div>
+              <p>
+             <StopDeploymentButton
+                      v-if="selectedDeployment?.status === 'running'"
+                      :deployment-id="selectedDeployment?.flowId"
+                      @success="handleStopSuccess"
+                      size="small"
+                    />
+              </p>
             </div>
           </div>
           
@@ -391,6 +401,12 @@
                       class="text-primary hover:text-primary-dark mr-3">
                       Details
                     </button>
+                    <StopDeploymentButton
+                      v-if="deployment.status === 'running'"
+                      :deployment-id="deployment.flowId"
+                      @success="handleStopSuccess"
+                      size="small"
+                    />
                   </td>
                 </tr>
               </tbody>
@@ -461,7 +477,7 @@
   import ExecutionDetail from './components/ExecutionDetail.vue';
   import LF from './components/LF.vue';
   import NewFlow from './components/NewFlow.vue';
-  
+  import StopDeploymentButton from  './components/StopDeploymentButton.vue';
   // View states
   const activeTab = ref('home');
   const selectedTemplate = ref(null);

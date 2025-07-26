@@ -1,15 +1,14 @@
 package protocol
 
 // 定义 AgentStatus 枚举类型
-type agentStatus string
+type AgentStatus string
 
 const (
-	AgentReady     agentStatus = "AgentReady"
-	TaskInProgress agentStatus = "TaskInProgress"
-	TaskTimeout    agentStatus = "TaskTimeout"
-	TaskCompleted  agentStatus = "TaskCompleted"
+	AgentIdle       AgentStatus = "Idle"
+	AgentInProgress AgentStatus = "TaskInProgress"
+	AgentOffline    AgentStatus = "Offline"
 )
 
-func (a agentStatus) String() string {
+func (a AgentStatus) String() string {
 	return string(a)
 }

@@ -10,7 +10,7 @@ import (
 type AgentConnection struct {
 	Conn       *websocket.Conn
 	LastActive carbon.Carbon
-	Status     agentStatus
+	Status     AgentStatus
 	lock       sync.RWMutex
 }
 

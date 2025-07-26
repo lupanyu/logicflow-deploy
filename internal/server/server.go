@@ -17,19 +17,66 @@ import (
 
 type Server struct {
 	agents       map[string]*protocol.AgentConnection // 连接的Agent
+	agentChans   map[string]chan struct{}             // 新增agent通道映射
 	stateStorage Storage
 	fpMap        map[string]*FlowProcessor // 当前在执行的flow的处理器,key 是 flowID
 	httpServer   *gin.Engine
 	agentsLock   sync.RWMutex
 }
 
+func (s *Server) AgentIsIdle(agent string) bool {
+	agentConn, ok := s.agents[agent]
+	if !ok {
+		return false
+	}
+	return agentConn.Status == protocol.AgentIdle
+}
+
+func (s *Server) SetAgentStatus(agent string, status protocol.AgentStatus) {
+	agentConn, ok := s.agents[agent]
+	if !ok {
+		return
+	}
+	s.agentsLock.Lock()
+	defer s.agentsLock.Unlock()
+	agentConn.Status = status
+}
+
+// 当agent的状态是idle后，返回true
+func (s *Server) WaitForAgentIdle(agent string) bool {
+	agentConn, ok := s.agents[agent]
+	if !ok {
+		return false
+	}
+	for {
+		if agentConn.Status == protocol.AgentIdle {
+			return true
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
 func (s *Server) addFlowProcessor(flowID string, fp *FlowProcessor) {
 	s.fpMap[flowID] = fp
+	log.Printf("add flow processor %s to fpmap %v", flowID, s.fpMap)
+}
+
+func (s *Server) GetFlowProcessor(flowID string) *FlowProcessor {
+	fp, ok := s.fpMap[flowID]
+	if !ok {
+		return nil
+	}
+	return fp
+}
+
+func (s *Server) RemoveFlowProcessor(flowID string) {
+	delete(s.fpMap, flowID)
 }
 
 func NewServer() *Server {
 	return &Server{
 		agents:       make(map[string]*protocol.AgentConnection),
+		agentChans:   make(map[string]chan struct{}),
 		stateStorage: NewMemoryStorage(20, "flow_storage.json"),
 		fpMap:        make(map[string]*FlowProcessor),
 	}
@@ -53,7 +100,7 @@ func (s *Server) HandleAgentStatus(agentID string) (bool, string) {
 		return false, fmt.Sprintf("agent %s not found", agentID)
 	}
 	// 检查Agent状态
-	if agent.Status == protocol.AgentReady {
+	if agent.Status != protocol.AgentOffline {
 		return true, ""
 	}
 	return false, agent.Status.String()
@@ -114,7 +161,7 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 	agent := &protocol.AgentConnection{
 		Conn:       conn,
 		LastActive: carbon.Now(),
-		Status:     protocol.AgentReady,
+		Status:     protocol.AgentIdle,
 	}
 	s.agents[registerMsg.AgentID] = agent
 	log.Println("新添加的agent", registerMsg.AgentID, agent, s.agents)
@@ -162,9 +209,16 @@ func HandleAgentConnection(s *Server, conn *websocket.Conn) {
 func handleTaskResult(s *Server, msg protocol.Message) {
 	log.Printf("[%s]收到 %s 任务结果: %+v", msg.AgentID, msg.NodeID, msg.Payload)
 	// 更新任务结果到存储中
-	fp := s.fpMap[msg.FlowExecutionID]
-
-	fp.taskResultChan <- msg
+	fp, ok := s.fpMap[msg.FlowExecutionID]
+	if !ok {
+		log.Printf(" [%s]flowExecutionID : %s,已经关闭 不再继续执行", utils.GetCallerInfo(), msg.FlowExecutionID)
+		return
+	}
+	if !fp.isClosed {
+		fp.taskResultChan <- msg
+	} else {
+		log.Printf("忽略已关闭流程的消息: %s", msg.FlowExecutionID)
+	}
 
 	//// 触发后面的节点
 	//flowExecution, ok := s.stateStorage.Get(msg.FlowExecutionID)
@@ -211,9 +265,19 @@ func handleTaskStepUpdate(s *Server, msg protocol.Message) {
 		return
 	}
 	log.Println(msg)
-	fp := s.fpMap[msg.FlowExecutionID]
+	fp, ok := s.fpMap[msg.FlowExecutionID]
+	if !ok {
+		log.Printf(" [%s]flowExecutionID : %s,已经关闭 不再继续执行", utils.GetCallerInfo(), msg.FlowExecutionID)
+		return
+	}
 	log.Printf("[%s] 收到executionFlowID %s nodeId %s 的任务步骤消息 taskstep: %s ", utils.GetCallerInfo(),
 		msg.FlowExecutionID, msg.NodeID, statusMsg)
 	log.Println("fp", s.fpMap)
-	fp.taskStepChan <- statusMsg
+
+	if fp.isClosed {
+		log.Printf("忽略已关闭流程的消息: %s", msg.FlowExecutionID)
+	} else {
+		fp.taskStepChan <- statusMsg
+	}
+
 }
