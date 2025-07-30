@@ -17,7 +17,12 @@ export default defineConfig({
     assetsDir: 'assets', // 打包后静态资源存储在 `dist/assets` 目录
     rollupOptions: {
       output: {
-        assetFileNames: 'assets/[name]-[hash][ext]', // 示例：生成 `assets/icon-abc123.svg`
+        assetFileNames:  (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'assets/[name]-[hash][extname]'; // 保留 .css 后缀
+          }
+          return 'assets/[name]-[hash][extname]';
+        }
       },
     },
   },

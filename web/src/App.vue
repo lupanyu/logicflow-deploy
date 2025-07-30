@@ -456,6 +456,7 @@
   
   <script setup>
   import { ref, onMounted, computed } from 'vue';
+  import { ElMessageBox } from 'element-plus';
   import { 
     ServerIcon, 
     HomeIcon, 
@@ -637,9 +638,21 @@
   };
   
   const executeDeployment = async (template) => {
+                // 新增确认弹窗
+
+    try {
+      await ElMessageBox.confirm(
+                'Are you sure to deploy this template?', 
+                'Confirm Deployment', 
+                {
+                    confirmButtonText: 'Confirm',
+                    cancelButtonText: 'Cancel',
+                    type: 'warning'
+                }
+            )
+            
     isDeploying.value = true;
     console.log("template", template);
-    try {
       let url = '/api/v1/deploy/';
       let args = {
         method: 'POST',

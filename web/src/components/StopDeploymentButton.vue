@@ -5,7 +5,8 @@
       :loading="isLoading"
       :disabled="isLoading"
       @click="handleStop"
-      text
+      text 
+      style="font-size: 20px; "
     >
       {{ isLoading ? 'stoping...' : 'stop' }}
     </el-button>
